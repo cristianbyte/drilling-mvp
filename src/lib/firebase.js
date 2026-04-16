@@ -1,0 +1,92 @@
+import { initializeApp } from 'firebase/app'
+import { getDatabase, ref, set, update, push, serverTimestamp } from 'firebase/database'
+
+// ─── Firebase config ────────────────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "...",
+  authDomain: "drilling-app-d57d8.firebaseapp.com",
+  projectId: "drilling-app-d57d8",
+  storageBucket: "drilling-app-d57d8.firebasestorage.app",
+  messagingSenderId: "...",
+  appId: "...",
+  databaseURL: "https://drilling-app-d57d8-default-rtdb.firebaseio.com"
+};
+
+// ─── Firebase schema ─────────────────────────────────────────────────────────
+//
+//  shifts/                           ← generic / one per shift
+//    {shiftId}:
+//      operatorName  string
+//      equipment     string
+//      date          string   "YYYY-MM-DD"
+//      shift         string   "DIA" | "NOCHE"
+//      blastId       string   # Voladura
+//      diameter      number   mm
+//      elevation     number   m
+//      pattern       string   "3×3"
+//      createdAt     timestamp
+//      frozenAt      timestamp   (set when header is locked)
+//
+//  holes/                            ← repetitive / one per barreno
+//    {holeId}:
+//      shiftId       string   FK → shifts
+//      holeNumber    number
+//      depth         number   m
+//      ceiling       number   m
+//      floor         number   m
+//      createdAt     timestamp
+//      updatedAt     timestamp   (set on supervisor corrections)
+//      updatedBy     string      (supervisor name on correction)
+//
+// ─────────────────────────────────────────────────────────────────────────────
+
+let app, db, ready = false
+
+try {
+  app = initializeApp(firebaseConfig)
+  db = getDatabase(app)
+  ready = true
+} catch (e) {
+  console.warn('Firebase not configured — offline mode', e)
+}
+
+/** Create a shift record. Returns the generated shiftId. */
+export async function createShift(data) {
+  if (!ready) return null
+  const shiftsRef = ref(db, 'shifts')
+  const newRef = push(shiftsRef)
+  await set(newRef, {
+    ...data,
+    createdAt: serverTimestamp(),
+    frozenAt: serverTimestamp(),
+  })
+  return newRef.key
+}
+
+/** Append a hole record. Returns the generated holeId. */
+export async function createHole(shiftId, data) {
+  if (!ready) return null
+  const holesRef = ref(db, 'holes')
+  const newRef = push(holesRef)
+  await set(newRef, {
+    shiftId,
+    ...data,
+    createdAt: serverTimestamp(),
+    updatedAt: null,
+    updatedBy: null,
+  })
+  return newRef.key
+}
+
+/** Supervisor correction: patch any hole by its ID. */
+export async function updateHole(holeId, patch, supervisorName) {
+  if (!ready) return
+  const holeRef = ref(db, `holes/${holeId}`)
+  await update(holeRef, {
+    ...patch,
+    updatedAt: serverTimestamp(),
+    updatedBy: supervisorName,
+  })
+}
+
+export { ready as firebaseReady }
