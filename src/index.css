@@ -1,75 +1,283 @@
 @import "tailwindcss";
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@theme {
+  /* Fonts */
+  --font-mono: "IBM Plex Mono", monospace;
+  --font-sans: "IBM Plex Sans", sans-serif;
 
+ /* Brand palette — mining light theme */
+--color-brand-amber:     #f97316;   /* naranja fuerte */
+--color-brand-amber-dim: #ffe8d5;   /* naranja suave bg */
+
+--color-brand-cyan:      #0ea5e9;   /* acento frío opcional */
+--color-brand-cyan-dim:  #e0f2fe;
+
+--color-brand-emerald:   #10b981;   /* ok/success */
+
+/* Surface layers — light gray stack */
+--color-surface-base:    #f4f6f8;   /* fondo app */
+--color-surface-1:       #ffffff;   /* cards */
+--color-surface-2:       #e5e7eb;   /* hover */
+--color-surface-3:       #d1d5db;   /* pressed */
+
+/* Borders */
+--color-border-subtle:   #e5e7eb;
+--color-border-default:  #d1d5db;
+--color-border-strong:   #9ca3af;
+
+/* Text — alto contraste */
+--color-text-primary:    #111827;   /* casi negro */
+--color-text-muted:      #4b5563;
+--color-text-faint:      #9ca3af;
+
+/* Semantic */
+--color-danger:          #dc2626;
+--color-danger-dim:      #fee2e2;
+
+/* Radii */
+--radius-card:   0.75rem;
+--radius-input:  0.375rem;
+--radius-btn:    0.5rem;
+--radius-pill:   9999px;
+}
+
+/* ─── Base resets ────────────────────────────────────────────────────────── */
 @layer base {
-  * {
-    box-sizing: border-box;
-  }
+  *, *::before, *::after { box-sizing: border-box; }
+
   body {
-    background-color: #0a0f1a;
-    color: #e2e8f0;
-    font-family: 'IBM Plex Sans', sans-serif;
+    background-color: var(--color-surface-base);
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+    min-height: 100vh;
     -webkit-tap-highlight-color: transparent;
   }
+
   input[type='number']::-webkit-inner-spin-button,
-  input[type='number']::-webkit-outer-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-  }
+  input[type='number']::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
   input[type='number'] { -moz-appearance: textfield; }
+  input[type='date']::-webkit-calendar-picker-indicator { filter: invert(0.5); cursor: pointer; }
 }
 
+/* ─── Components ─────────────────────────────────────────────────────────── */
 @layer components {
+
   .field-label {
-    @apply block font-mono text-[10px] uppercase tracking-[0.15em] text-slate-400 mb-1.5;
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--color-text-muted);
+    margin-bottom: 0.375rem;
   }
+
   .field-input {
-    @apply w-full bg-slate-900 border border-slate-700 rounded-md text-white font-sans text-base
-           px-3 py-3 outline-none transition-colors duration-150
-           focus:border-amber-500 placeholder:text-slate-600;
+    width: 100%;
+    background: var(--color-surface-2);
+    border: 1px solid var(--color-border-default);
+    border-radius: var(--radius-input);
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    padding: 0.75rem 0.875rem;
+    outline: none;
+    transition: border-color 0.15s;
   }
-  .field-input-error {
-    @apply border-red-500 focus:border-red-400;
-  }
+  .field-input::placeholder { color: var(--color-text-faint); }
+  .field-input:focus        { border-color: var(--color-brand-amber); }
+  .field-input--error       { border-color: var(--color-danger) !important; }
+
   .btn-primary {
-    @apply w-full bg-amber-500 hover:bg-amber-400 active:scale-[0.98]
-           text-slate-950 font-mono font-semibold text-sm uppercase tracking-wider
-           py-4 rounded-lg transition-all duration-150 disabled:opacity-30 disabled:cursor-not-allowed;
+    width: 100%;
+    background: var(--color-brand-amber);
+    color: var(--color-surface-base);
+    border: none;
+    border-radius: var(--radius-btn);
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 1rem;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s, opacity 0.15s;
   }
+  .btn-primary:hover   { background: color-mix(in srgb, var(--color-brand-amber) 82%, white); }
+  .btn-primary:active  { transform: scale(0.98); }
+  .btn-primary:disabled { opacity: 0.3; cursor: not-allowed; }
+
   .btn-secondary {
-    @apply w-full bg-transparent border border-slate-700 hover:border-slate-500
-           text-slate-400 hover:text-slate-200 font-mono text-xs uppercase tracking-wider
-           py-3 rounded-lg transition-all duration-150;
+    width: 100%;
+    background: transparent;
+    color: var(--color-text-muted);
+    border: 1px solid var(--color-border-default);
+    border-radius: var(--radius-btn);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.75rem;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
   }
+  .btn-secondary:hover { border-color: var(--color-border-strong); color: var(--color-text-primary); }
+
+  /* Modal action buttons */
+  .btn-confirm {
+    flex: 1;
+    background: var(--color-brand-amber);
+    color: var(--color-surface-base);
+    border: none;
+    border-radius: var(--radius-btn);
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.875rem;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .btn-confirm:hover { background: color-mix(in srgb, var(--color-brand-amber) 82%, white); }
+
+  .btn-correct {
+    flex: 1;
+    background: transparent;
+    color: var(--color-text-muted);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-btn);
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.875rem;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .btn-correct:hover { border-color: var(--color-brand-amber); color: var(--color-brand-amber); }
+
+  /* Danger button (delete confirm) */
+  .btn-danger {
+    flex: 1;
+    background: var(--color-danger-dim);
+    color: var(--color-danger);
+    border: 1px solid var(--color-danger);
+    border-radius: var(--radius-btn);
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.875rem;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .btn-danger:hover { background: color-mix(in srgb, var(--color-danger) 20%, transparent); }
+
+  /* Cards */
   .section-card {
-    @apply bg-slate-900 border border-slate-800 rounded-xl mx-4 mb-4 overflow-hidden;
+    background: var(--color-surface-1);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-card);
+    margin: 0 1rem 1rem;
+    overflow: hidden;
   }
+
   .section-header {
-    @apply flex items-center gap-2 px-4 py-3 border-b border-slate-800 bg-slate-800/40;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--color-border-subtle);
+    background: color-mix(in srgb, var(--color-surface-2) 60%, transparent);
   }
+
   .section-title {
-    @apply font-mono text-[10px] uppercase tracking-[0.18em] text-slate-400;
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--color-text-muted);
   }
+
+  .dot { width: 0.375rem; height: 0.375rem; border-radius: 9999px; flex-shrink: 0; }
+
+  .frozen-chip {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    color: var(--color-brand-amber);
+    background: var(--color-surface-2);
+    border: 1px solid var(--color-border-default);
+    border-radius: var(--radius-input);
+    padding: 0.625rem 0.75rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Confirm modal summary rows */
+  .confirm-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--color-border-subtle);
+  }
+  .confirm-row:last-child { border-bottom: none; }
+
+  .confirm-key {
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+  }
+
+  .confirm-val {
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+    color: var(--color-text-primary);
+    text-align: right;
+  }
+
+  .confirm-val--accent { color: var(--color-brand-amber); }
 }
 
-/* Toast animation */
+/* ─── Animations ─────────────────────────────────────────────────────────── */
 @keyframes toastIn {
-  from { opacity: 0; transform: translateX(-50%) translateY(16px); }
+  from { opacity: 0; transform: translateX(-50%) translateY(14px); }
   to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 @keyframes toastOut {
-  from { opacity: 1; transform: translateX(-50%) translateY(0); }
-  to   { opacity: 0; transform: translateX(-50%) translateY(16px); }
+  from { opacity: 1; }
+  to   { opacity: 0; transform: translateX(-50%) translateY(14px); }
 }
 .toast-enter { animation: toastIn 0.25s ease forwards; }
 .toast-exit  { animation: toastOut 0.2s ease forwards; }
 
-/* Slide in for log items */
 @keyframes slideDown {
   from { opacity: 0; transform: translateY(-6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 .slide-down { animation: slideDown 0.25s ease forwards; }
+
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(20px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.modal-enter { animation: modalIn 0.22s cubic-bezier(0.34, 1.4, 0.64, 1) forwards; }
+
+@keyframes backdropIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.backdrop-enter { animation: backdropIn 0.18s ease forwards; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+.animate-pulse { animation: pulse 2s ease-in-out infinite; }

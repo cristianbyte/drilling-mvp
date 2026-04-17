@@ -74,6 +74,7 @@ holes/{holeId}         ← one per barreno (repetitive)
 |-----------|------|
 | `ShiftHeader` | Header form, freezes on submit, calls `createShift()` |
 | `HoleEntry` | Repetitive barreno form, calls `createHole()` |
+| `ConfirmModal` | Confirmation dialog before submitting shift |   
 | `HoleLog` | Running list + total meters |
 | `Toast` | Global notification |
 

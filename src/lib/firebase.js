@@ -89,4 +89,12 @@ export async function updateHole(holeId, patch, supervisorName) {
   })
 }
 
+/** Delete a hole by ID (operator self-correction within same session). */
+export async function deleteHole(holeId) {
+  if (!ready) return
+  const { remove } = await import('firebase/database')
+  const holeRef = ref(db, `holes/${holeId}`)
+  await remove(holeRef)
+}
+ 
 export { ready as firebaseReady }
