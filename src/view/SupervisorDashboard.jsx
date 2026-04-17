@@ -341,11 +341,14 @@ export default function SupervisorDashboard() {
                     </td>
                     <td style={{ padding: '10px 12px' }}>
                       <button
-                        onClick={() => setDeleteTarget({
-                          holeId: r.holeId,
-                          holeNumber: r.holeNumber,
-                          operatorName: r.operatorName,
-                        })}
+                        onClick={() => {
+                            console.log("CLICK r:", r)
+                            setDeleteTarget({
+                                holeId: r.holeId,
+                                holeNumber: r.holeNumber,
+                                operatorName: r.operatorName,
+                            })
+                            }}
                         style={{
                           background: 'transparent',
                           border: '1px solid var(--color-danger)',
@@ -366,13 +369,13 @@ export default function SupervisorDashboard() {
 
       </div>
 
-      {deleteTarget && (
+      {deleteTarget?.holeId && (
         <ConfirmModal
           danger
           title="Eliminar barreno"
           rows={[
-            { label: 'Barreno',  value: `B-${String(deleteTarget.holeNumber || 0).padStart(2, '0')}` },
-            { label: 'Operador', value: deleteTarget.operatorName || '—' },
+            { key: 'Barreno',  val: `B-${String(deleteTarget?.holeNumber || 0).padStart(2, '0')}` },
+            { key: 'Operador', val: deleteTarget?.operatorName || '—' },
           ]}
           confirmLabel="Eliminar"
           correctLabel="Cancelar"
