@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { createShift } from '../lib/firebase'
 import { showToast } from './Toast'
-import ConfirmModal from './ConfirmModal'
 
 const SHIFTS = ['DIA', 'NOCHE']
 
@@ -18,10 +17,14 @@ function FrozenField({ label, value }) {
   )
 }
 
+// validate filds, then allow to save and freeze the form, sending data up to parent
+
 export default function ShiftHeader({ onFrozen }) {
   const [frozen,    setFrozen]    = useState(false)
   const [saving,    setSaving]    = useState(false)
-  const [showModal, setShowModal] = useState(false)
+
+const active = 'border-orange-500 bg-orange-100 text-orange-600';
+const idle   = 'border-gray-300 bg-gray-100 text-gray-500 hover:bg-gray-200';
 
   const [form, setForm] = useState({
     operatorName: '',
@@ -41,8 +44,10 @@ export default function ShiftHeader({ onFrozen }) {
     setErrors(e => ({ ...e, [key]: false }))
   }
 
+  const required = ['operatorName', 'equipment', 'blastId']
+  const isValid = required.every(k => form[k]?.trim());
+
   function validate() {
-    const required = ['operatorName', 'equipment', 'blastId']
     const errs = {}
     required.forEach(k => { if (!form[k].trim()) errs[k] = true })
     setErrors(errs)
@@ -50,13 +55,13 @@ export default function ShiftHeader({ onFrozen }) {
   }
 
   // Step 1: validate → open modal
-  function handleSubmitIntent() {
-    if (validate()) setShowModal(true)
-  }
+  // function handleSubmitIntent() {
+  //   if (validate()) setShowModal(true)
+  // }
 
-  // Step 2: confirmed — actually save
+  // confirmed — actually save
   async function handleConfirm() {
-    setShowModal(false)
+    if (!validate()) return
     setSaving(true)
     try {
       const shiftId = await createShift({
@@ -79,18 +84,6 @@ export default function ShiftHeader({ onFrozen }) {
       setSaving(false)
     }
   }
-
-  // Summary rows for modal
-  const modalRows = [
-    { key: 'Operador',      val: form.operatorName || '—' },
-    { key: 'Equipo',        val: form.equipment    || '—' },
-    { key: 'Fecha',         val: form.date },
-    { key: 'Turno',         val: form.shift },
-    { key: '# Voladura',    val: form.blastId      || '—', accent: true },
-    { key: 'Ø Perf.',       val: form.diameter ? form.diameter + ' mm' : '—' },
-    { key: 'Cota',          val: form.elevation ? form.elevation + ' m' : '—' },
-    { key: 'Patrón',        val: form.pattern      || '—' },
-  ]
 
   /* ── Frozen view ── */
   if (frozen) {
@@ -144,6 +137,10 @@ export default function ShiftHeader({ onFrozen }) {
         </div>
 
         <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <button className="btn-primary" style={{ marginTop: '0.25rem' }} onClick={handleConfirm} disabled={saving || !isValid}>
+            {saving ? 'Iniciando...' : 'Iniciar turno →'}
+          </button>
+          
           {/* Operator */}
           <div>
             <label className="field-label">Nombre operador *</label>
@@ -196,20 +193,7 @@ export default function ShiftHeader({ onFrozen }) {
                     key={s}
                     type="button"
                     onClick={() => set('shift', s)}
-                    style={{
-                      flex: 1,
-                      fontFamily: 'var(--font-mono)',
-                      fontSize: '0.75rem',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.06em',
-                      padding: '0.75rem',
-                      borderRadius: 'var(--radius-input)',
-                      border: `1px solid ${form.shift === s ? 'var(--color-brand-amber)' : 'var(--color-border-default)'}`,
-                      background: form.shift === s ? 'var(--color-brand-amber-dim)' : 'var(--color-surface-2)',
-                      color: form.shift === s ? 'var(--color-brand-amber)' : 'var(--color-text-muted)',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s',
-                    }}
+                    className={`flex-1 px-3 py-3 text-xs uppercase tracking-wide rounded border transition-all font-mono ${form.shift === s ? active : idle}`}
                   >
                     {s === 'DIA' ? '☀ Día' : '☾ Noche'}
                   </button>
@@ -234,14 +218,12 @@ export default function ShiftHeader({ onFrozen }) {
             </div>
           </div>
 
-          <button className="btn-primary" style={{ marginTop: '0.25rem' }} onClick={handleSubmitIntent} disabled={saving}>
-            {saving ? 'Iniciando...' : 'Iniciar turno →'}
-          </button>
+
         </div>
       </div>
 
       {/* Confirm modal */}
-      {showModal && (
+      {/* {showModal && (
         <ConfirmModal
           title="Confirmar datos del turno"
           rows={modalRows}
@@ -250,7 +232,7 @@ export default function ShiftHeader({ onFrozen }) {
           confirmLabel="Iniciar turno"
           correctLabel="Corregir"
         />
-      )}
+      )} */}
     </>
   )
 }

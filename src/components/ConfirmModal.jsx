@@ -4,8 +4,8 @@
  * Props:
  *   title    string             — modal heading
  *   rows     { key, val, accent? }[]  — summary rows
- *   onConfirm  fn               — left button: confirm
- *   onCorrect  fn               — right button: go back and fix
+ *   onConfirm  fn               —  button: confirm
+ *   onCorrect  fn               —  button: go back and fix
  *   danger   bool               — swap confirm to red (for delete)
  *   confirmLabel  string        — override confirm button text
  *   correctLabel  string        — override correct button text
