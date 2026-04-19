@@ -1,8 +1,8 @@
-import { useState, useRef, useEffect } from 'react'
-import { createHole } from '../lib/firebase'
+import { useEffect, useRef, useState } from 'react'
+import { createClientId } from '../lib/ids'
 import { showToast } from './Toast'
 
-export default function HoleEntry({ shiftId, nextHoleNumber, onSaved }) {
+export default function HoleEntry({ nextHoleNumber, onSaved }) {
   const [form, setForm] = useState({ depth: '', ceiling: '', floor: '' })
   const [error, setError] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -39,16 +39,17 @@ export default function HoleEntry({ shiftId, nextHoleNumber, onSaved }) {
     if (!validate()) return
 
     const hole = {
+      holeId: createClientId('hole'),
       holeNumber: nextHoleNumber,
       depth: parseFloat(form.depth),
       ceiling: parseFloat(form.ceiling) || 0,
       floor: parseFloat(form.floor) || 0,
+      synced: false,
     }
 
     setSaving(true)
     try {
-      const holeId = await createHole(shiftId, hole)
-      onSaved({ holeId: holeId || 'local-' + Date.now(), ...hole })
+      await onSaved(hole)
       setForm({ depth: '', ceiling: '', floor: '' })
       showToast(`Barreno B-${String(nextHoleNumber).padStart(2, '0')} guardado`)
       setTimeout(() => depthRef.current?.focus(), 80)

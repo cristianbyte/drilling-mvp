@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { createShift } from '../lib/firebase'
+import { createClientId } from '../lib/ids'
 import { showToast } from './Toast'
 
 const SHIFTS = ['DIA', 'NOCHE']
@@ -92,6 +92,7 @@ export default function ShiftHeader({ onFrozen, initialShift = null }) {
     setSaving(true)
     try {
       const shiftPayload = {
+        shiftId: createClientId('shift'),
         operatorName: form.operatorName.trim(),
         equipment: form.equipment.trim(),
         location: form.location.trim(),
@@ -101,17 +102,16 @@ export default function ShiftHeader({ onFrozen, initialShift = null }) {
         diameter: form.diameter === '' ? null : parseFloat(form.diameter),
         elevation: form.elevation === '' ? null : parseFloat(form.elevation),
         pattern: form.pattern.trim() || null,
+        synced: false,
       }
 
-      const shiftId = await createShift(shiftPayload)
-      const frozenShift = { shiftId: shiftId || 'offline-' + Date.now(), ...shiftPayload }
-      setForm(normalizeShift(frozenShift))
+      setForm(normalizeShift(shiftPayload))
       setFrozen(true)
       showToast('Turno iniciado')
-      onFrozen(frozenShift)
+      await onFrozen(shiftPayload)
     } catch (e) {
       console.error(e)
-      showToast('Error al guardar, reintenta')
+      showToast('Error al iniciar turno')
     } finally {
       setSaving(false)
     }

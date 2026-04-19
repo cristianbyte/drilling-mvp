@@ -73,7 +73,15 @@ function ActionIconButton({ title, onClick, children, color = 'var(--color-text-
   )
 }
 
-export default function HoleLog({ holes, totalMeters, onDelete, shiftLocation }) {
+export default function HoleLog({
+  holes,
+  totalMeters,
+  onDelete,
+  shiftLocation,
+  onForceSync,
+  syncDisabled = false,
+  syncing = false,
+}) {
   const [pendingDelete, setPendingDelete] = useState(null)
 
   const targetHole = holes.find(h => h.holeId === pendingDelete)
@@ -98,6 +106,15 @@ export default function HoleLog({ holes, totalMeters, onDelete, shiftLocation })
         <div className="section-header">
           <div className="dot" style={{ background: 'var(--color-border-strong)' }} />
           <span className="section-title">Registros del turno</span>
+          <ActionIconButton
+            title={syncDisabled ? 'No hay registros pendientes por sincronizar' : syncing ? 'Sincronizando...' : 'Sincronizar pendientes'}
+            onClick={onForceSync}
+            disabled={syncDisabled || syncing}
+            color={syncDisabled ? 'var(--color-text-faint)' : 'var(--color-brand-cyan)'}
+            hoverColor="var(--color-brand-emerald)"
+          >
+            <SyncIcon synced={false} />
+          </ActionIconButton>
           <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: '1rem', fontWeight: 600, color: 'var(--color-brand-amber)' }}>
               {totalMeters.toFixed(1)} m
@@ -115,7 +132,7 @@ export default function HoleLog({ holes, totalMeters, onDelete, shiftLocation })
             </p>
           ) : (
             [...holes].reverse().map((h, i) => {
-              const isSynced = !String(h.holeId || '').startsWith('local-')
+              const isSynced = Boolean(h.synced)
 
               return (
                 <div
