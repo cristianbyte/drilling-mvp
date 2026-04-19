@@ -1,16 +1,55 @@
+import { useEffect, useState } from 'react'
 import HoleLog from '../components/HoleLog'
 import Toast, { useToast } from '../components/Toast'
 import { firebaseReady, deleteHole } from '../lib/firebase'
+import { clearOperatorSnapshot, loadOperatorSnapshot, saveOperatorSnapshot } from '../lib/offlineStore'
 import ShiftHeader from '../components/ShiftHeader'
 import HoleEntry from '../components/HoleEntry'
-import { useState } from 'react'
 
-export default function OperatorForm(){
-const [shift, setShift] = useState(null)
+export default function OperatorForm() {
+  const [shift, setShift] = useState(null)
   const [holes, setHoles] = useState([])
+  const [hydrated, setHydrated] = useState(false)
+  const [headerKey, setHeaderKey] = useState(0)
   const toastState = useToast()
 
-  const totalMeters  = holes.reduce((sum, h) => sum + h.depth, 0)
+  useEffect(() => {
+    let active = true
+
+    loadOperatorSnapshot()
+      .then(snapshot => {
+        if (!active || !snapshot) return
+        setShift(snapshot.shift || null)
+        setHoles(Array.isArray(snapshot.holes) ? snapshot.holes : [])
+      })
+      .catch(error => {
+        console.error('Offline restore failed:', error)
+      })
+      .finally(() => {
+        if (active) setHydrated(true)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!hydrated) return
+
+    if (!shift && holes.length === 0) {
+      clearOperatorSnapshot().catch(error => {
+        console.error('Offline clear failed:', error)
+      })
+      return
+    }
+
+    saveOperatorSnapshot({ shift, holes, savedAt: Date.now() }).catch(error => {
+      console.error('Offline save failed:', error)
+    })
+  }, [shift, holes, hydrated])
+
+  const totalMeters = holes.reduce((sum, h) => sum + h.depth, 0)
   const nextHoleNumber = holes.length + 1
 
   function handleShiftFrozen(shiftData) {
@@ -22,7 +61,6 @@ const [shift, setShift] = useState(null)
   }
 
   async function handleHoleDelete(holeId) {
-    // Optimistic remove — fire-and-forget Firebase
     setHoles(prev => prev.filter(h => h.holeId !== holeId))
     try {
       await deleteHole(holeId)
@@ -35,12 +73,11 @@ const [shift, setShift] = useState(null)
     if (holes.length && !window.confirm('¿Resetear turno? Los datos ya están guardados en Firebase.')) return
     setShift(null)
     setHoles([])
+    setHeaderKey(prev => prev + 1)
   }
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--color-surface-base)', paddingBottom: '5rem' }}>
-
-      {/* ── App Bar ── */}
       <header style={{
         position: 'sticky',
         top: 0,
@@ -98,9 +135,8 @@ const [shift, setShift] = useState(null)
         </div>
       </header>
 
-      {/* ── Content ── */}
       <div style={{ paddingTop: '1rem' }}>
-        <ShiftHeader onFrozen={handleShiftFrozen} />
+        <ShiftHeader key={headerKey} onFrozen={handleShiftFrozen} initialShift={shift} />
 
         {shift && (
           <>
@@ -113,6 +149,7 @@ const [shift, setShift] = useState(null)
               holes={holes}
               totalMeters={totalMeters}
               onDelete={handleHoleDelete}
+              shiftLocation={shift.location}
             />
           </>
         )}

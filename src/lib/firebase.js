@@ -18,6 +18,7 @@ const firebaseConfig = {
 //    {shiftId}:
 //      operatorName  string
 //      equipment     string
+//      location      string   "HATILLO NORTE" | "HATILLO SUR"
 //      date          string   "YYYY-MM-DD"
 //      shift         string   "DIA" | "NOCHE"
 //      blastId       string   # Voladura
