@@ -9,6 +9,22 @@ function today() {
   return new Date().toISOString().slice(0, 10)
 }
 
+function getSign(elev) {
+  return String(elev).startsWith('-') ? '-' : '+'
+}
+
+function getAbs(elev) {
+  return String(elev).replace(/^[+-]/, '')
+}
+
+function splitElevation(value) {
+  if (!value) return { elevationSign: '+', elevationValue: '' }
+  const stringValue = String(value).trim()
+  if (stringValue.startsWith('-')) return { elevationSign: '-', elevationValue: stringValue.slice(1) }
+  if (stringValue.startsWith('+')) return { elevationSign: '+', elevationValue: stringValue.slice(1) }
+  return { elevationSign: '+', elevationValue: stringValue }
+}
+
 function emptyForm() {
   return {
     operatorName: '',
@@ -34,6 +50,7 @@ function FrozenField({ label, value }) {
 
 function normalizeShift(shift) {
   if (!shift) return emptyForm()
+
   return {
     operatorName: shift.operatorName || '',
     equipment: shift.equipment || '',
@@ -42,7 +59,7 @@ function normalizeShift(shift) {
     shift: shift.shift || 'DIA',
     blastId: shift.blastId || '',
     diameter: shift.diameter ?? '',
-    elevation: shift.elevation ?? '',
+    elevation: shift.elevation || '',
     pattern: shift.pattern || '',
   }
 }
@@ -79,9 +96,19 @@ export default function ShiftHeader({ onFrozen, initialShift = null }) {
 
   function validate() {
     const errs = {}
+
+    if (form.pattern.trim() && !/^\d+(\.\d+)?x\d+(\.\d+)?$/i.test(form.pattern.trim())) {
+  errs.pattern = true
+}
+
     required.forEach(k => {
-      if (!form[k].trim()) errs[k] = true
+      if (!form[k]?.trim()) errs[k] = true
     })
+
+    if (form.blastId && !/^V\d+$/.test(form.blastId)) {
+      errs.blastId = true
+    }
+
     setErrors(errs)
     return Object.keys(errs).length === 0
   }
@@ -91,6 +118,10 @@ export default function ShiftHeader({ onFrozen, initialShift = null }) {
 
     setSaving(true)
     try {
+      const elevation = form.elevation.replace(/^[+-]$/, '').trim()
+  ? form.elevation.trim()
+  : null
+
       const shiftPayload = {
         shiftId: createClientId('shift'),
         operatorName: form.operatorName.trim(),
@@ -100,7 +131,7 @@ export default function ShiftHeader({ onFrozen, initialShift = null }) {
         shift: form.shift,
         blastId: form.blastId.trim(),
         diameter: form.diameter === '' ? null : parseFloat(form.diameter),
-        elevation: form.elevation === '' ? null : parseFloat(form.elevation),
+        elevation,
         pattern: form.pattern.trim() || null,
         synced: false,
       }
@@ -142,7 +173,7 @@ export default function ShiftHeader({ onFrozen, initialShift = null }) {
           <FrozenField label="Turno" value={form.shift} />
           <FrozenField label="# Voladura" value={form.blastId} />
           <FrozenField label="Diámetro" value={form.diameter !== '' ? form.diameter + ' mm' : ''} />
-          <FrozenField label="Cota" value={form.elevation !== '' ? form.elevation + ' m' : ''} />
+          <FrozenField label="Cota" value={form.elevation ? form.elevation + ' m' : ''} />
           <FrozenField label="Patrón" value={form.pattern} />
         </div>
       </div>
@@ -189,8 +220,8 @@ export default function ShiftHeader({ onFrozen, initialShift = null }) {
             <label className="field-label">Equipo *</label>
             <input
               className={`field-input${errors.equipment ? ' field-input--error' : ''}`}
-              type="text"
-              placeholder="EQ-03"
+              type="number"
+              placeholder="1234"
               value={form.equipment}
               onChange={e => set('equipment', e.target.value)}
             />
@@ -218,9 +249,11 @@ export default function ShiftHeader({ onFrozen, initialShift = null }) {
             <input
               className={`field-input${errors.blastId ? ' field-input--error' : ''}`}
               type="text"
-              placeholder="V-12"
+              placeholder="V123"
               value={form.blastId}
               onChange={e => set('blastId', e.target.value)}
+              pattern="^V\\d+$"
+              title="Formato: V seguido de números (ej: V123)"
             />
             {errors.blastId && <p style={{ marginTop: '0.25rem', fontFamily: 'var(--font-mono)', fontSize: '0.625rem', color: 'var(--color-danger)' }}>Requerido</p>}
           </div>
@@ -253,12 +286,50 @@ export default function ShiftHeader({ onFrozen, initialShift = null }) {
           </div>
           <div>
             <label className="field-label">Cota (m)</label>
-            <input className="field-input" type="number" placeholder="1250" inputMode="decimal" value={form.elevation} onChange={e => set('elevation', e.target.value)} />
+            <div className="flex items-center rounded-btn border border-border-default gap-0 overflow-hidden">
+              <div
+                title="Cambiar signo"
+                style={{ minWidth: '3.5rem' }}
+                onClick={() => {
+                  const sign = getSign(form.elevation)
+                  const abs  = getAbs(form.elevation)
+                  set('elevation', (sign === '+' ? '-' : '+') + abs)
+                }}
+                className="flex items-center justify-center px-3 py-3 font-mono font-bold transition-all select-none rounded-l-none border-gray-300 bg-gray-100 text-gray-500 hover:bg-gray-200">
+                <span className="scale-250 border-none" >
+                  {getSign(form.elevation) === '+' ? '+' : '-'}
+                </span>
+              </div>
+              <input
+                className="field-input border-none rounded-l-none bg-color-surface-1"
+                type="number"
+                placeholder="10"
+                inputMode="decimal"
+                step="0.1"
+                min="0"
+                value={getAbs(form.elevation)}
+                onChange={e => {
+                  const abs = e.target.value.replace(/^-/, '') // bloquea negativo nativo
+                  set('elevation', getSign(form.elevation) + abs)
+                }}
+              />
+            </div>
           </div>
           <div>
-            <label className="field-label">Patrón</label>
-            <input className="field-input" type="text" placeholder="3x3" value={form.pattern} onChange={e => set('pattern', e.target.value)} />
-          </div>
+  <label className="field-label">Patrón</label>
+  <input
+    className={`field-input${errors.pattern ? ' field-input--error' : ''}`}
+    type="text"
+    placeholder="3x3"
+    value={form.pattern}
+    onChange={e => set('pattern', e.target.value)}
+  />
+  {errors.pattern && (
+    <p style={{ marginTop: '0.25rem', fontFamily: 'var(--font-mono)', fontSize: '0.625rem', color: 'var(--color-danger)' }}>
+      Formato: NxN (EJ: 3x3 o 3.5x3.5)
+    </p>
+  )}
+</div>
         </div>
       </div>
     </div>
