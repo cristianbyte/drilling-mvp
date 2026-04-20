@@ -13,10 +13,10 @@ import {
 
 const TICK_STYLE = { fontFamily: 'var(--font-mono)', fontSize: 11, fill: 'var(--color-text-muted)' }
 
-export default function SupervisorStats({ chartOpsData, chartTimeData }) {
+export default function SupervisorStats({ chartOpsData, chartTimeData, scopeLabel }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-      <Card title="Metros por operador (24 h)">
+      <Card title={`Metros por operador · ${scopeLabel}`}>
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={chartOpsData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-subtle)" />
@@ -28,7 +28,7 @@ export default function SupervisorStats({ chartOpsData, chartTimeData }) {
         </ResponsiveContainer>
       </Card>
 
-      <Card title="Acumulado en el tiempo (24 h)">
+      <Card title={`Acumulado · ${scopeLabel}`}>
         <ResponsiveContainer width="100%" height={200}>
           <LineChart data={chartTimeData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-subtle)" />
@@ -36,8 +36,10 @@ export default function SupervisorStats({ chartOpsData, chartTimeData }) {
             <YAxis tick={TICK_STYLE} />
             <Tooltip contentStyle={{ fontFamily: 'var(--font-mono)', fontSize: 12 }} />
             <Line
-              type="monotone" dataKey="acum"
-              stroke="var(--color-brand-emerald)" strokeWidth={2}
+              type="monotone"
+              dataKey="acum"
+              stroke="var(--color-brand-emerald)"
+              strokeWidth={2}
               dot={{ r: 3, fill: 'var(--color-brand-emerald)' }}
               activeDot={{ r: 5 }}
             />

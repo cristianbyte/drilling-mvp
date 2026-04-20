@@ -10,8 +10,12 @@ function ExportExcelIcon() {
   )
 }
 
-
-export default function SupervisorHeader({ lastUpdate, onOpenExport, exportDisabled = false }) {
+export default function SupervisorHeader({
+  lastUpdate,
+  selectedDate,
+  onOpenExport,
+  exportDisabled = false,
+}) {
   return (
     <header style={{
       background: 'var(--color-surface-1)',
@@ -21,14 +25,34 @@ export default function SupervisorHeader({ lastUpdate, onOpenExport, exportDisab
       alignItems: 'center',
       justifyContent: 'space-between',
     }}>
-      <div style={{
-        fontFamily: 'var(--font-mono)',
-        fontSize: 13,
-        color: 'var(--color-brand-amber)',
-        letterSpacing: '0.08em',
-        textTransform: 'uppercase',
-      }}>
-        Supervisor · Perforación
+      <div style={{ display: 'flex', flexDirection: 'column', color: 'var(--color-text-faint)', gap: 0 }}>
+        <div style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: 13,
+          color: 'var(--color-brand-amber)',
+          letterSpacing: '0.08em',
+          textTransform: 'uppercase',
+        }}>
+          Supervisor · Perforacion
+        </div>
+        <div style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: 8,
+          color: 'var(--color-text-faint)',
+          letterSpacing: '0.08em',
+          textTransform: 'uppercase',
+        }}>
+          Dashboard: ultimos 50 registros
+        </div>
+        <div style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: 8,
+          color: 'var(--color-text-faint)',
+          letterSpacing: '0.05em',
+          textTransform: 'uppercase',
+        }}>
+          Exportacion: fecha {selectedDate}
+        </div>
       </div>
 
       <div className="flex items-center gap-5">
@@ -37,7 +61,7 @@ export default function SupervisorHeader({ lastUpdate, onOpenExport, exportDisab
           <div className="font-font-mono text-[0.6rem] text-text-faint font-semibold">
             {lastUpdate
               ? `Act. ${new Date(lastUpdate).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`
-              : '—'}
+              : '-'}
           </div>
         </div>
 

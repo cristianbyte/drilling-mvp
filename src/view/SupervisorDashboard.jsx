@@ -5,9 +5,7 @@ import {
   fetchShiftsByDate,
   fetchShiftsByIds,
   firebaseReady,
-  subscribeHolesByShiftIds,
   subscribeRecentHoles,
-  subscribeShiftsByDate,
 } from '../lib/firebase'
 import Card from '../components/Card'
 import ConfirmModal from '../components/ConfirmModal'
@@ -19,17 +17,11 @@ import SupervisorTable from '../components/SupervisorTable'
 import { exportRowsToXlsx } from '../lib/exportXlsx'
 
 function todayDate() {
-  return new Date().toISOString().slice(0, 10)
-}
-
-function within24h(ts) {
-  if (!ts) return false
-  const value = typeof ts === 'number' ? ts : Date.now()
-  return Date.now() - value < 24 * 60 * 60 * 1000
+  return new Date().toLocaleDateString('sv-SE')
 }
 
 function fmtTime(ts) {
-  if (!ts) return '—'
+  if (!ts) return '-'
   return new Date(ts).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })
 }
 
@@ -40,11 +32,11 @@ function buildRows(holesEntries, shifts) {
     return {
       holeId,
       ...hole,
-      location: shift?.location ?? '—',
-      operatorName: shift?.operatorName ?? '—',
-      equipment: shift?.equipment ?? '—',
-      blastId: shift?.blastId ?? '—',
-      shift: shift?.shift ?? '—',
+      location: shift?.location ?? '-',
+      operatorName: shift?.operatorName ?? '-',
+      equipment: shift?.equipment ?? '-',
+      blastId: shift?.blastId ?? '-',
+      shift: shift?.shift ?? '-',
       date: shift?.date ?? hole.date ?? '',
       diameter: shift?.diameter ?? null,
       elevation: shift?.elevation ?? null,
@@ -53,9 +45,11 @@ function buildRows(holesEntries, shifts) {
   })
 }
 
+function sortByCreatedAtDesc(rows) {
+  return [...rows].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+}
+
 export default function SupervisorDashboard() {
-  const [dailyHoles, setDailyHoles] = useState({})
-  const [dailyShifts, setDailyShifts] = useState({})
   const [recentHoles, setRecentHoles] = useState({})
   const [recentShifts, setRecentShifts] = useState({})
   const [lastUpdate, setLastUpdate] = useState(null)
@@ -66,30 +60,6 @@ export default function SupervisorDashboard() {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [exportFeedback, setExportFeedback] = useState('')
-
-  useEffect(() => {
-    if (!firebaseReady) return
-
-    const unsubShifts = subscribeShiftsByDate(selectedDate, nextShifts => {
-      setDailyShifts(nextShifts)
-      setLastUpdate(Date.now())
-    })
-
-    return () => unsubShifts()
-  }, [selectedDate])
-
-  const dailyShiftIds = useMemo(() => Object.keys(dailyShifts), [dailyShifts])
-
-  useEffect(() => {
-    if (!firebaseReady) return
-
-    const unsubHoles = subscribeHolesByShiftIds(dailyShiftIds, nextHoles => {
-      setDailyHoles(nextHoles)
-      setLastUpdate(Date.now())
-    })
-
-    return () => unsubHoles()
-  }, [dailyShiftIds])
 
   useEffect(() => {
     if (!firebaseReady) return
@@ -105,11 +75,10 @@ export default function SupervisorDashboard() {
     return () => unsubRecentHoles()
   }, [])
 
-  const dayRows = buildRows(Object.entries(dailyHoles), dailyShifts)
   const recentRows = buildRows(Object.entries(recentHoles), recentShifts)
-  const rows24h = dayRows.filter(row => within24h(row.createdAt))
+  const latest50Rows = sortByCreatedAtDesc(recentRows).slice(0, 50)
 
-  const filteredRows = recentRows.filter(row => {
+  const filteredRows = latest50Rows.filter(row => {
     const turnoOk = filtroTurno === 'TODOS' || row.shift === filtroTurno
     const opOk = !filtroOp || (row.operatorName || '').toLowerCase().includes(filtroOp.toLowerCase())
     return turnoOk && opOk
@@ -119,13 +88,18 @@ export default function SupervisorDashboard() {
     .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
     .slice(0, 50)
 
-  const totalMetros = rows24h.reduce((sum, row) => sum + Number(row.depth || 0), 0)
-  const promMetros = rows24h.length ? totalMetros / rows24h.length : 0
-  const totalOps = new Set(rows24h.map(row => row.operatorName).filter(Boolean)).size
+  const totalMetros = latest50Rows.reduce((sum, row) => sum + Number(row.depth || 0), 0)
+  const promMetros = latest50Rows.length ? totalMetros / latest50Rows.length : 0
+  const totalOps = new Set(
+    latest50Rows
+      .map(row => row.operatorName)
+      .filter(Boolean)
+      .filter(name => name !== '-')
+  ).size
 
   const chartOpsData = Object.entries(
-    rows24h.reduce((acc, row) => {
-      const operator = row.operatorName || 'Sin nombre'
+    latest50Rows.reduce((acc, row) => {
+      const operator = row.operatorName && row.operatorName !== '-' ? row.operatorName : 'Sin nombre'
       acc[operator] = (acc[operator] || 0) + Number(row.depth || 0)
       return acc
     }, {})
@@ -136,7 +110,7 @@ export default function SupervisorDashboard() {
 
   const chartTimeData = (() => {
     let acum = 0
-    return [...rows24h]
+    return [...latest50Rows]
       .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0))
       .map(row => {
         acum += Number(row.depth || 0)
@@ -181,6 +155,7 @@ export default function SupervisorDashboard() {
     <div style={{ background: 'var(--color-surface-base)', minHeight: '100vh', fontFamily: 'var(--font-sans)' }}>
       <SupervisorHeader
         lastUpdate={lastUpdate}
+        selectedDate={selectedDate}
         onOpenExport={() => {
           setExportFeedback('')
           setIsExportModalOpen(true)
@@ -190,13 +165,17 @@ export default function SupervisorDashboard() {
 
       <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
-          <KpiCard label="Metros totales" value={totalMetros.toFixed(1)} sub="ultimas 24 h" color="var(--color-brand-amber)" />
-          <KpiCard label="Barrenos" value={rows24h.length} sub="ultimas 24 h" color="var(--color-brand-cyan)" />
-          <KpiCard label="Prof. promedio" value={promMetros ? promMetros.toFixed(1) : '—'} sub="metros / barreno" color="var(--color-brand-emerald)" />
-          <KpiCard label="Operadores" value={totalOps} sub="activos hoy" color="var(--color-text-muted)" />
+          <KpiCard label="Metros totales" value={totalMetros.toFixed(1)} sub="ultimos 50 registros" color="var(--color-brand-amber)" />
+          <KpiCard label="Barrenos" value={latest50Rows.length} sub="ultimos 50 registros" color="var(--color-brand-cyan)" />
+          <KpiCard label="Prof. promedio" value={promMetros ? promMetros.toFixed(1) : '-'} sub="metros por barreno" color="var(--color-brand-emerald)" />
+          <KpiCard label="Operadores" value={totalOps} sub="en ultimos 50 registros" color="var(--color-text-muted)" />
         </div>
 
-        <SupervisorStats chartOpsData={chartOpsData} chartTimeData={chartTimeData} />
+        <SupervisorStats
+          chartOpsData={chartOpsData}
+          chartTimeData={chartTimeData}
+          scopeLabel="ultimos 50 registros"
+        />
 
         <Card>
           <SupervisorTable
@@ -217,7 +196,7 @@ export default function SupervisorDashboard() {
           title="Eliminar barreno"
           rows={[
             { key: 'Barreno', val: `B-${String(deleteTarget?.holeNumber || 0).padStart(2, '0')}` },
-            { key: 'Operador', val: deleteTarget?.operatorName || '—' },
+            { key: 'Operador', val: deleteTarget?.operatorName || '-' },
           ]}
           confirmLabel="Eliminar"
           correctLabel="Cancelar"
