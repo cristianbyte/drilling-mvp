@@ -1,12 +1,26 @@
-import { useCallback, useEffect, useState } from 'react'
-import { getDatabase, onValue, ref, remove } from 'firebase/database'
-import { firebaseReady } from '../lib/firebase'
-import ConfirmModal from '../components/ConfirmModal'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { getDatabase, ref, remove } from 'firebase/database'
+import {
+  fetchHolesByShiftIds,
+  fetchShiftsByDate,
+  fetchShiftsByIds,
+  firebaseReady,
+  subscribeHolesByShiftIds,
+  subscribeRecentHoles,
+  subscribeShiftsByDate,
+} from '../lib/firebase'
 import Card from '../components/Card'
+import ConfirmModal from '../components/ConfirmModal'
+import ExportDayModal from '../components/ExportDayModal'
 import KpiCard from '../components/KpiCard'
 import SupervisorHeader from '../components/SupervisorHeader'
 import SupervisorStats from '../components/SupervisorStats'
 import SupervisorTable from '../components/SupervisorTable'
+import { exportRowsToXlsx } from '../lib/exportXlsx'
+
+function todayDate() {
+  return new Date().toISOString().slice(0, 10)
+}
 
 function within24h(ts) {
   if (!ts) return false
@@ -31,40 +45,71 @@ function buildRows(holesEntries, shifts) {
       equipment: shift?.equipment ?? '—',
       blastId: shift?.blastId ?? '—',
       shift: shift?.shift ?? '—',
+      date: shift?.date ?? hole.date ?? '',
+      diameter: shift?.diameter ?? null,
+      elevation: shift?.elevation ?? null,
+      pattern: shift?.pattern ?? '',
     }
   })
 }
 
 export default function SupervisorDashboard() {
-  const [holes, setHoles] = useState({})
-  const [shifts, setShifts] = useState({})
+  const [dailyHoles, setDailyHoles] = useState({})
+  const [dailyShifts, setDailyShifts] = useState({})
+  const [recentHoles, setRecentHoles] = useState({})
+  const [recentShifts, setRecentShifts] = useState({})
   const [lastUpdate, setLastUpdate] = useState(null)
+  const [selectedDate] = useState(todayDate)
   const [filtroTurno, setFiltroTurno] = useState('TODOS')
   const [filtroOp, setFiltroOp] = useState('')
   const [deleteTarget, setDeleteTarget] = useState(null)
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false)
+  const [exporting, setExporting] = useState(false)
+  const [exportFeedback, setExportFeedback] = useState('')
 
   useEffect(() => {
     if (!firebaseReady) return
 
-    const db = getDatabase()
-    const unsubHoles = onValue(ref(db, 'holes'), snap => {
-      setHoles(snap.val() || {})
+    const unsubShifts = subscribeShiftsByDate(selectedDate, nextShifts => {
+      setDailyShifts(nextShifts)
       setLastUpdate(Date.now())
     })
-    const unsubShifts = onValue(ref(db, 'shifts'), snap => {
-      setShifts(snap.val() || {})
+
+    return () => unsubShifts()
+  }, [selectedDate])
+
+  const dailyShiftIds = useMemo(() => Object.keys(dailyShifts), [dailyShifts])
+
+  useEffect(() => {
+    if (!firebaseReady) return
+
+    const unsubHoles = subscribeHolesByShiftIds(dailyShiftIds, nextHoles => {
+      setDailyHoles(nextHoles)
+      setLastUpdate(Date.now())
     })
 
-    return () => {
-      unsubHoles()
-      unsubShifts()
-    }
+    return () => unsubHoles()
+  }, [dailyShiftIds])
+
+  useEffect(() => {
+    if (!firebaseReady) return
+
+    const unsubRecentHoles = subscribeRecentHoles(50, async nextHoles => {
+      setRecentHoles(nextHoles)
+      const shiftIds = [...new Set(Object.values(nextHoles).map(hole => hole?.shiftId).filter(Boolean))]
+      const nextShifts = await fetchShiftsByIds(shiftIds)
+      setRecentShifts(nextShifts)
+      setLastUpdate(Date.now())
+    })
+
+    return () => unsubRecentHoles()
   }, [])
 
-  const allRows = buildRows(Object.entries(holes), shifts)
-  const rows24h = allRows.filter(row => within24h(row.createdAt))
+  const dayRows = buildRows(Object.entries(dailyHoles), dailyShifts)
+  const recentRows = buildRows(Object.entries(recentHoles), recentShifts)
+  const rows24h = dayRows.filter(row => within24h(row.createdAt))
 
-  const filteredRows = allRows.filter(row => {
+  const filteredRows = recentRows.filter(row => {
     const turnoOk = filtroTurno === 'TODOS' || row.shift === filtroTurno
     const opOk = !filtroOp || (row.operatorName || '').toLowerCase().includes(filtroOp.toLowerCase())
     return turnoOk && opOk
@@ -108,14 +153,45 @@ export default function SupervisorDashboard() {
     setDeleteTarget(null)
   }, [deleteTarget])
 
+  const handleExport = useCallback(async selectedExportDate => {
+    if (!selectedExportDate) return
+
+    setExporting(true)
+    setExportFeedback('')
+
+    try {
+      const exportShifts = await fetchShiftsByDate(selectedExportDate)
+      const exportShiftIds = Object.keys(exportShifts)
+      const exportHoles = await fetchHolesByShiftIds(exportShiftIds)
+      const exportRows = buildRows(Object.entries(exportHoles), exportShifts)
+      const exportedCount = exportRowsToXlsx(exportRows, selectedExportDate)
+
+      if (exportedCount > 0) {
+        setIsExportModalOpen(false)
+        return
+      }
+
+      setExportFeedback('Sin registros para fecha seleccionada.')
+    } finally {
+      setExporting(false)
+    }
+  }, [])
+
   return (
     <div style={{ background: 'var(--color-surface-base)', minHeight: '100vh', fontFamily: 'var(--font-sans)' }}>
-      <SupervisorHeader lastUpdate={lastUpdate} />
+      <SupervisorHeader
+        lastUpdate={lastUpdate}
+        onOpenExport={() => {
+          setExportFeedback('')
+          setIsExportModalOpen(true)
+        }}
+        exportDisabled={false}
+      />
 
       <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
-          <KpiCard label="Metros totales" value={totalMetros.toFixed(1)} sub="últimas 24 h" color="var(--color-brand-amber)" />
-          <KpiCard label="Barrenos" value={rows24h.length} sub="últimas 24 h" color="var(--color-brand-cyan)" />
+          <KpiCard label="Metros totales" value={totalMetros.toFixed(1)} sub="ultimas 24 h" color="var(--color-brand-amber)" />
+          <KpiCard label="Barrenos" value={rows24h.length} sub="ultimas 24 h" color="var(--color-brand-cyan)" />
           <KpiCard label="Prof. promedio" value={promMetros ? promMetros.toFixed(1) : '—'} sub="metros / barreno" color="var(--color-brand-emerald)" />
           <KpiCard label="Operadores" value={totalOps} sub="activos hoy" color="var(--color-text-muted)" />
         </div>
@@ -147,6 +223,18 @@ export default function SupervisorDashboard() {
           correctLabel="Cancelar"
           onConfirm={handleDeleteConfirm}
           onCorrect={() => setDeleteTarget(null)}
+        />
+      )}
+
+      {isExportModalOpen && (
+        <ExportDayModal
+          initialDate={selectedDate}
+          onClose={() => {
+            if (!exporting) setIsExportModalOpen(false)
+          }}
+          onDownload={handleExport}
+          exporting={exporting}
+          feedback={exportFeedback}
         />
       )}
     </div>

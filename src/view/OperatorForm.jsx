@@ -178,6 +178,7 @@ export default function OperatorForm() {
 
     const localHole = {
       ...hole,
+      date: shift.date,
       shiftId: shift.shiftId,
       synced: false,
     }

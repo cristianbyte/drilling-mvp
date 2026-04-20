@@ -1,0 +1,12 @@
+{
+  "rules": {
+    ".read": true,
+    ".write": true,
+    "shifts": {
+      ".indexOn": ["date"]
+    },
+    "holes": {
+      ".indexOn": ["shiftId", "date", "createdAt"]
+    }
+  }
+}
