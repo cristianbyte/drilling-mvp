@@ -1,24 +1,8 @@
 export default function Card({ title, children }) {
   return (
-    <div
-      style={{
-        background: "var(--color-surface-1)",
-        border: "1px solid var(--color-border-default)",
-        borderRadius: "var(--radius-card)",
-        padding: 18,
-      }}
-    >
+    <div className="bg-surface-1 border border-border-default rounded-card p-4.5">
       {title && (
-        <div
-          style={{
-            fontFamily: "var(--font-mono)",
-            fontSize: 10,
-            textTransform: "uppercase",
-            letterSpacing: "0.12em",
-            color: "var(--color-text-muted)",
-            marginBottom: 16,
-          }}
-        >
+        <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-muted mb-4">
           {title}
         </div>
       )}

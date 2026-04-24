@@ -1,4 +1,5 @@
-export function createClientId(prefix = 'rec') {
-  const random = Math.random().toString(36).slice(2, 10)
-  return `${prefix}-${Date.now()}-${random}`
+import crypto from "crypto";
+
+export function createClientId(prefix = "rec") {
+  return `${prefix}-${crypto.randomUUID()}`;
 }

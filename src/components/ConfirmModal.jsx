@@ -16,97 +16,47 @@ export default function ConfirmModal({
   onConfirm,
   onCorrect,
   danger = false,
-  confirmLabel = 'Confirmar',
-  correctLabel = 'Corregir',
+  confirmLabel = "Confirmar",
+  correctLabel = "Corregir",
 }) {
   return (
     /* Backdrop */
     <div
-      className="backdrop-enter"
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 50,
-        display: 'flex',
-        alignItems: 'flex-end',
-        justifyContent: 'center',
-        background: 'color-mix(in srgb, var(--color-surface-base) 75%, transparent)',
-        backdropFilter: 'blur(4px)',
-        padding: '0 0 env(safe-area-inset-bottom, 0)',
+      className="backdrop-enter fixed inset-0 z-50 flex items-end justify-center bg-[color-mix(in srgb, var(--color-surface-base) 75%, transparent)] backdrop-blur-xs p-[0_0_env(safe-area-inset-bottom,0)]"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onCorrect();
       }}
-      onClick={(e) => { if (e.target === e.currentTarget) onCorrect() }}
     >
       {/* Sheet */}
-      <div
-        className="modal-enter"
-        style={{
-          width: '100%',
-          maxWidth: '480px',
-          background: 'var(--color-surface-1)',
-          border: '1px solid var(--color-border-default)',
-          borderRadius: 'var(--radius-card) var(--radius-card) 0 0',
-          overflow: 'hidden',
-        }}
-      >
+      <div className="modal-enter w-full max-w-[120] bg-surface-1 border border-border-default rounded-t-[--radius-card] overflow-hidden">
         {/* Header bar */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            padding: '0.875rem 1rem',
-            borderBottom: '1px solid var(--color-border-subtle)',
-            background: 'color-mix(in srgb, var(--color-surface-2) 70%, transparent)',
-          }}
-        >
-          <span
-            style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: '0.625rem',
-              textTransform: 'uppercase',
-              letterSpacing: '0.18em',
-              color: 'var(--color-text-muted)',
-            }}
-          >
+        <div className="flex items-center gap-2 p-[0.875rem_1rem] border-b border-border-subtle bg-[color-mix(in srgb, var(--color-surface-2) 70%, transparent)]">
+          <span className="font-mono text-[0.625rem] uppercase tracking-[0.18em] text-text-muted">
             {title}
           </span>
-          <span
-            style={{
-              marginLeft: 'auto',
-              fontFamily: 'var(--font-mono)',
-              fontSize: '0.625rem',
-              textTransform: 'uppercase',
-              letterSpacing: '0.12em',
-              color: 'var(--color-brand-amber)',
-            }}
-          >
+          <span className="ml-auto font-mono text-[0.625rem] uppercase tracking-[0.12em] text-brand-amber">
             Verificar antes de enviar
           </span>
         </div>
 
         {/* Summary rows */}
-        <div style={{ padding: '0.25rem 1rem' }}>
+        <div className="p-[0.25rem_1rem]">
           {rows.map(({ key, val, accent }) => (
             <div key={key} className="confirm-row">
               <span className="confirm-key">{key}</span>
-              <span className={`confirm-val${accent ? ' confirm-val--accent' : ''}`}>
-                {val ?? '—'}
+              <span
+                className={`confirm-val${accent ? " confirm-val--accent" : ""}`}
+              >
+                {val ?? "—"}
               </span>
             </div>
           ))}
         </div>
 
         {/* Action buttons */}
-        <div
-          style={{
-            display: 'flex',
-            gap: '0.75rem',
-            padding: '1rem',
-            borderTop: '1px solid var(--color-border-subtle)',
-          }}
-        >
-                    <button
-            className={danger ? 'btn-danger' : 'btn-confirm'}
+        <div className="flex gap-3 p-4 border-t border-border-subtle">
+          <button
+            className={danger ? "btn-danger" : "btn-confirm"}
             onClick={onConfirm}
           >
             {confirmLabel} →
@@ -114,10 +64,8 @@ export default function ConfirmModal({
           <button className="btn-correct" onClick={onCorrect}>
             ← {correctLabel}
           </button>
-
-
         </div>
       </div>
     </div>
-  )
+  );
 }
