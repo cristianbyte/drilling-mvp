@@ -83,7 +83,7 @@ export default function SupervisorHeader({
       <div className="flex items-center gap-5">
         <div className="flex items-center gap-1 flex-col text-xs">
           <LiveBadge />
-          <div className="font-font-mono text-[0.6rem] text-text-faint font-semibold">
+          <div className="font-font-mono text-[0.6rem] text-(--color-text-faint) font-semibold">
             {lastUpdate
               ? `Act. ${new Date(lastUpdate).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`
               : "-"}

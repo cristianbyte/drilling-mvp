@@ -96,11 +96,11 @@ export default function ExportDayModal({
         if (event.target === event.currentTarget) onClose();
       }}
     >
-      <div className="modal-enter w-full max-w-140 bg-surface-1 border border-border-default rounded-card overflow-hidden">
-        <div className="flex items-center justify-between gap-4 p-[1rem_1.25rem] border-b border-border-subtle bg-[color-mix(in srgb, var(--color-surface-2) 65%, transparent)]">
+      <div className="modal-enter w-full max-w-140 bg-(--color-surface-1) border border-(--color-border-default) rounded-(--radius-card) overflow-hidden">
+        <div className="flex items-center justify-between gap-4 p-[1rem_1.25rem] border-b border-(--color-border-subtle) bg-[color-mix(in srgb, var(--color-surface-2) 65%, transparent)]">
           <div>
             <div className="section-title">Exportar registros</div>
-            <div className="mt-[0.35rem] font-mono text-[0.75rem] text-text-muted">
+            <div className="mt-[0.35rem] font-mono text-[0.75rem] text-(--color-text-muted)">
               {/* Consulta Firebase por fecha exacta y descarga archivo Excel. */}
               Requiere conexión a internet | El proceso puede tardar unos
               segundos dependiendo la carga del día seleccionado.
@@ -137,14 +137,14 @@ export default function ExportDayModal({
             />
           </div>
 
-          <div className="font-mono text-[0.7rem] text-text-muted uppercase tracking-[0.08em]">
+          <div className="font-mono text-[0.7rem] text-(--color-text-muted) uppercase tracking-[0.08em]">
             {selectedDate
               ? `Fecha seleccionada: ${selectedDate}`
               : "Selecciona fecha para descargar"}
           </div>
 
           {feedback ? (
-            <div className="font-mono text-[0.75rem] text-brand-amber">
+            <div className="font-mono text-[0.75rem] text-(--color-brand-amber)">
               {feedback}
             </div>
           ) : null}
