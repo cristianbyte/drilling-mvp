@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx'
 
-const EMPTY = '-'
+const EMPTY = ''
 
 const COLUMN_CONFIG = [
   ['Fecha', row => row.date || EMPTY],

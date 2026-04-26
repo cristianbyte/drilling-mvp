@@ -2,12 +2,18 @@ import { useEffect, useRef, useState } from 'react'
 import { createClientId } from '../lib/ids'
 import { showToast } from './Toast'
 
+function parseOptionalNumber(value) {
+  if (value === '') return null
+  const numeric = parseFloat(value)
+  return Number.isNaN(numeric) ? null : numeric
+}
+
 export default function HoleEntry({ nextHoleNumber, onSaved }) {
   const [form, setForm] = useState({ depth: '', ceiling: '', floor: '' })
   const [error, setError] = useState(false)
   const [saving, setSaving] = useState(false)
   const depthRef = useRef(null)
-  const required = ['depth', 'ceiling', 'floor']
+  const required = ['depth']
 
   useEffect(() => { depthRef.current?.focus() }, [])
 
@@ -18,22 +24,14 @@ export default function HoleEntry({ nextHoleNumber, onSaved }) {
 
   function validate() {
     const d = parseFloat(form.depth)
-    const c = parseFloat(form.ceiling)
-    const f = parseFloat(form.floor)
 
     if (!d || d <= 0) { setError(true); depthRef.current?.focus(); return false }
-    if (form.ceiling === '' || Number.isNaN(c) || c < 0) return false
-    if (form.floor === '' || Number.isNaN(f) || f < 0) return false
     return true
   }
 
   const isValid =
     required.every(key => form[key] !== '') &&
-    parseFloat(form.depth) > 0 &&
-    !Number.isNaN(parseFloat(form.ceiling)) &&
-    parseFloat(form.ceiling) >= 0 &&
-    !Number.isNaN(parseFloat(form.floor)) &&
-    parseFloat(form.floor) >= 0
+    parseFloat(form.depth) > 0
 
   async function handleSubmit() {
     if (!validate()) return
@@ -42,8 +40,8 @@ export default function HoleEntry({ nextHoleNumber, onSaved }) {
       holeId: createClientId('hole'),
       holeNumber: nextHoleNumber,
       depth: parseFloat(form.depth),
-      ceiling: parseFloat(form.ceiling) || 0,
-      floor: parseFloat(form.floor) || 0,
+      ceiling: parseOptionalNumber(form.ceiling),
+      floor: parseOptionalNumber(form.floor),
       synced: false,
     }
 

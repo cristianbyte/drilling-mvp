@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { createClientId } from '../lib/ids'
 import { showToast } from './Toast'
+import FrozenField from './FronzenField'
 
 const SHIFTS = ['DIA', 'NOCHE']
 const LOCATIONS = ['HATILLO NORTE', 'HATILLO SUR']
@@ -39,14 +40,7 @@ function emptyForm() {
   }
 }
 
-function FrozenField({ label, value }) {
-  return (
-    <div>
-      <span className="field-label">{label}</span>
-      <div className="frozen-chip">{value || '—'}</div>
-    </div>
-  )
-}
+
 
 function normalizeShift(shift) {
   if (!shift) return emptyForm()

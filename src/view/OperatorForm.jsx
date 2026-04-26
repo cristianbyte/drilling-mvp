@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import HoleLog from '../components/HoleLog'
 import Toast, { showToast, useToast } from '../components/Toast'
-import { deleteHole, firebaseReady, holeExists, shiftExists, upsertHole, upsertShift } from '../lib/firebase'
+import { deleteHole, firebaseReady, holeExists, shiftExists, updateHole, upsertHole, upsertShift } from '../lib/firebase'
 import { createClientId } from '../lib/ids'
 import {
   clearAllRecords,
@@ -66,6 +66,13 @@ export default function OperatorForm() {
           const alreadyExists = await holeExists(record.id)
           if (!alreadyExists) {
             await upsertHole(record.id, shiftId, holeData)
+          } else {
+            await updateHole(record.id, {
+              depth: holeData.depth,
+              ceiling: holeData.ceiling,
+              floor: holeData.floor,
+              holeNumber: holeData.holeNumber,
+            }, holeData.updatedBy || latestShift?.operatorName || 'Operador')
           }
           await markRecordSynced(record.id)
           syncedHoleIds.push(record.id)
@@ -207,6 +214,37 @@ export default function OperatorForm() {
     }
   }
 
+  async function handleHoleEdit(holeId, patch) {
+    const targetHole = holes.find(h => h.holeId === holeId)
+    if (!targetHole || !shift) return
+
+    const operatorName = shift.operatorName || 'Operador'
+    const editedAt = Date.now()
+    const syncNow = Boolean(targetHole.synced && window.navigator.onLine && firebaseReady)
+    const nextHole = {
+      ...targetHole,
+      ...patch,
+      updatedAt: editedAt,
+      updatedBy: operatorName,
+      synced: syncNow ? targetHole.synced : false,
+    }
+
+    setHoles(prev => prev.map(h => h.holeId === holeId ? nextHole : h))
+
+    if (syncNow) {
+      await updateHole(holeId, patch, operatorName)
+      return
+    }
+
+    await saveRecord({
+      id: nextHole.holeId,
+      kind: 'hole',
+      data: nextHole,
+      synced: 0,
+      createdAt: nextHole.createdAt || Date.now(),
+    })
+  }
+
   async function handleReset() {
     if (holes.length && !window.confirm('¿Resetear turno? Los datos ya están guardados localmente y en Firebase cuando hay conexión.')) return
     setShift(null)
@@ -293,6 +331,8 @@ export default function OperatorForm() {
               holes={holes}
               totalMeters={totalMeters}
               onDelete={handleHoleDelete}
+              onEdit={handleHoleEdit}
+              operatorName={shift.operatorName}
               shiftLocation={shift.location}
               onForceSync={() => syncPendingRecords(true)}
               syncDisabled={pendingSyncCount === 0 || !isOnline || !firebaseReady}
