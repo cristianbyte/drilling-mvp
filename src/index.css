@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-@theme {
+:root {
   /* Fonts */
   --font-mono: "IBM Plex Mono", monospace;
   --font-sans: "IBM Plex Sans", sans-serif;
@@ -231,7 +231,7 @@
     gap: 0.5rem;
     padding: 0.75rem 1rem;
     border-bottom: 1px solid var(--color-border-subtle);
-    background: color-mix(in srgb, var(--color-surface-2) 60%, transparent);
+    backdrop-filter: blur(4px);
   }
 
   .section-title {

@@ -70,10 +70,9 @@ export default function EditHoleModal({ hole, onClose, onSave }) {
 
   return (
     <div
-      className="backdrop-enter fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
+      className="backdrop-enter fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-xs"
       style={{
-        background:
-          "color-mix(in srgb, var(--color-surface-base) 72%, transparent)",
+        background: "transparent",
       }}
       onClick={(event) => {
         if (event.target === event.currentTarget && !saving) onClose();
