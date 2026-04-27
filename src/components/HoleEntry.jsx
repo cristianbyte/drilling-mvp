@@ -52,7 +52,6 @@ export default function HoleEntry({ nextHoleNumber, onSaved }) {
       showToast(`Barreno B-${String(nextHoleNumber).padStart(2, '0')} guardado`)
       setTimeout(() => depthRef.current?.focus(), 80)
     } catch (e) {
-      console.error(e)
       showToast('Error al guardar, reintenta')
     } finally {
       setSaving(false)
