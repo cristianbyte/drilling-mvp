@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import HoleLog from '../components/HoleLog'
 import Toast, { showToast, useToast } from '../components/Toast'
-import { deleteHole, firebaseReady, holeExists, shiftExists, updateHole, upsertHole, upsertShift } from '../lib/firebase'
+import { holeRepository, shiftRepository } from '../di/container'
+import { ready as firebaseReady } from '../infrastructure/firebase/firebaseClient'
 import { createClientId } from '../lib/ids'
 import {
   clearAllRecords,
@@ -53,9 +54,9 @@ export default function OperatorForm() {
       for (const record of pending) {
         if (record.kind === 'shift') {
           const { shiftId, synced, ...shiftData } = record.data
-          const alreadyExists = await shiftExists(record.id)
+          const alreadyExists = await shiftRepository.shiftExists(record.id)
           if (!alreadyExists) {
-            await upsertShift(record.id, shiftData)
+            await shiftRepository.upsertShift(record.id, shiftData)
           }
           await markRecordSynced(record.id)
           latestShift = { ...record.data, synced: true, shiftId: record.id }
@@ -63,11 +64,11 @@ export default function OperatorForm() {
 
         if (record.kind === 'hole') {
           const { shiftId, holeId, synced, ...holeData } = record.data
-          const alreadyExists = await holeExists(record.id)
+          const alreadyExists = await holeRepository.holeExists(record.id)
           if (!alreadyExists) {
-            await upsertHole(record.id, shiftId, holeData)
+            await holeRepository.upsertHole(record.id, shiftId, holeData)
           } else {
-            await updateHole(record.id, {
+            await holeRepository.updateHole(record.id, {
               depth: holeData.depth,
               ceiling: holeData.ceiling,
               floor: holeData.floor,
@@ -207,7 +208,7 @@ export default function OperatorForm() {
     try {
       await deleteRecord(holeId)
       if (targetHole?.synced && window.navigator.onLine && firebaseReady) {
-        await deleteHole(holeId)
+        await holeRepository.deleteHole(holeId)
       }
     } catch (e) {
       console.error('Delete failed:', e)
@@ -232,7 +233,7 @@ export default function OperatorForm() {
     setHoles(prev => prev.map(h => h.holeId === holeId ? nextHole : h))
 
     if (syncNow) {
-      await updateHole(holeId, patch, operatorName)
+      await holeRepository.updateHole(holeId, patch, operatorName)
       return
     }
 

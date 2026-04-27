@@ -1,12 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { getDatabase, ref, remove } from 'firebase/database'
 import {
-  fetchHolesByShiftIds,
-  fetchShiftsByDate,
-  fetchShiftsByIds,
-  firebaseReady,
-  subscribeRecentHoles,
-} from '../lib/firebase'
+  holeRepository,
+  shiftRepository,
+} from '../di/container'
+import { ready as firebaseReady } from '../infrastructure/firebase/firebaseClient'
 import Card from '../components/Card'
 import ConfirmModal from '../components/ConfirmModal'
 import ExportDayModal from '../components/ExportDayModal'
@@ -64,10 +61,10 @@ export default function SupervisorDashboard() {
   useEffect(() => {
     if (!firebaseReady) return
 
-    const unsubRecentHoles = subscribeRecentHoles(50, async nextHoles => {
+    const unsubRecentHoles = holeRepository.subscribeRecentHoles(50, async nextHoles => {
       setRecentHoles(nextHoles)
       const shiftIds = [...new Set(Object.values(nextHoles).map(hole => hole?.shiftId).filter(Boolean))]
-      const nextShifts = await fetchShiftsByIds(shiftIds)
+      const nextShifts = await shiftRepository.fetchShiftsByIds(shiftIds)
       setRecentShifts(nextShifts)
       setLastUpdate(Date.now())
     })
@@ -123,7 +120,7 @@ export default function SupervisorDashboard() {
 
   const handleDeleteConfirm = useCallback(async () => {
     if (!deleteTarget) return
-    await remove(ref(getDatabase(), `holes/${deleteTarget.holeId}`))
+    await holeRepository.deleteHole(deleteTarget.holeId)
     setDeleteTarget(null)
   }, [deleteTarget])
 
@@ -134,9 +131,9 @@ export default function SupervisorDashboard() {
     setExportFeedback('')
 
     try {
-      const exportShifts = await fetchShiftsByDate(selectedExportDate)
+      const exportShifts = await shiftRepository.fetchShiftsByDate(selectedExportDate)
       const exportShiftIds = Object.keys(exportShifts)
-      const exportHoles = await fetchHolesByShiftIds(exportShiftIds)
+      const exportHoles = await holeRepository.fetchHolesByShiftIds(exportShiftIds)
       const exportRows = buildRows(Object.entries(exportHoles), exportShifts)
       const exportedCount = exportRowsToXlsx(exportRows, selectedExportDate)
 
