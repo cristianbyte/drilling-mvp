@@ -13,7 +13,6 @@
     "@supabase/supabase-js": "^2.105.0",
     "@tailwindcss/cli": "^4.2.4",
     "@tailwindcss/vite": "^4.2.4",
-    "firebase": "^12.12.1",
     "idb": "^8.0.3",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",

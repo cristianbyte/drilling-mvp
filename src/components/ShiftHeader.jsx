@@ -351,19 +351,13 @@ export default function ShiftHeader({ onFrozen, initialShift = null }) {
             )}
           </div>
           <div>
-            <label className="field-label">Ubicación</label>
-            <div
+            <label className="field-label">Fecha</label>
+            <input
               className="field-input"
-              style={{
-                background: "var(--color-surface-2)",
-                color: "var(--color-text-muted)",
-                cursor: "default",
-                display: "flex",
-                alignItems: "center",
-              }}
-            >
-              {selectedBlastData?.location || "—"}
-            </div>
+              type="date"
+              value={form.date}
+              onChange={(e) => set("date", e.target.value)}
+            />
           </div>
         </div>
 
@@ -407,13 +401,19 @@ export default function ShiftHeader({ onFrozen, initialShift = null }) {
             )}
           </div>
           <div>
-            <label className="field-label">Fecha</label>
-            <input
+            <label className="field-label">Ubicación</label>
+            <div
               className="field-input"
-              type="date"
-              value={form.date}
-              onChange={(e) => set("date", e.target.value)}
-            />
+              style={{
+                background: "var(--color-surface-2)",
+                color: "var(--color-text-muted)",
+                cursor: "default",
+                display: "flex",
+                alignItems: "center",
+              }}
+            >
+              {selectedBlastData?.location || "—"}
+            </div>
           </div>
         </div>
 
