@@ -1,83 +1,34 @@
-# FOR-PO-04 · Drilling Operator App
+## Drilling Operator App
 
-React + Vite + Tailwind app for drilling shift registration.
+Aplicación web para facilitar registro de turnos y barrenos en campo. Objetivo: reducir errores de captura y acelerar reporte diario de productividad (metros perforados, operarios, ubicación, voladuras).
 
-## Setup
+Público objetivo
 
-```bash
-npm install
-npm run dev
-```
+- Supervisores y operadores de perforación que registran turno y datos por barreno.
 
-## Firebase Configuration
+Problema que resuelve
 
-Edit `src/lib/firebase.js` and replace the placeholder values in `firebaseConfig` with your actual project credentials:
+- Simplifica entrada repetitiva de datos en terreno, asegura trazabilidad (correcciones con `updatedAt`/`updatedBy`) y exportación de reportes por día.
 
-```js
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "...",
-  databaseURL: "...",
-  projectId: "...",
-  storageBucket: "...",
-  messagingSenderId: "...",
-  appId: "...",
-};
-```
+Tecnologías y arquitectura
 
-## Firebase Database Rules (recommended)
+- Frontend: React + Vite + Tailwind CSS (componentizado).
+- Backend/Realtime: Supabase (Postgres + realtime).
+- Diseño: Clean Architecture / ports-and-adapters pattern — `core/entities` + repository interfaces + infrastructure adapters (`src/infrastructure/*`).
+- Dependencias relevantes: `supabase-js`, `xlsx` (export), browser Intl APIs for fecha/hora.
 
-```json
-{
-  "rules": {
-    "shifts": {
-      ".read": "auth != null",
-      ".write": "auth != null"
-    },
-    "holes": {
-      ".read": "auth != null",
-      ".write": "auth != null"
-    }
-  }
-}
-```
+Principales responsabilidades del código
 
-## Data Structure
+- Capturar shift header (datos de turno) y barrenos repetitivos.
+- Persistir en DB (holes, shifts), soportar correcciones supervisores con auditoría.
+- Subscriptions realtime para actualizar dashboard supervisor.
+- Exportar informes XLSX por fecha.
 
-```
-shifts/{shiftId}       ← one per shift (header, frozen)
-  operatorName
-  equipment
-  date
-  shift                DIA | NOCHE
-  blastId              # Voladura
-  diameter             mm
-  elevation            m
-  pattern
-  createdAt
-  frozenAt
+Estructura clave (puntos de interés para reviewer)
 
-holes/{holeId}         ← one per barreno (repetitive)
-  shiftId              FK → shifts
-  holeNumber
-  depth                m
-  ceiling              m
-  floor                m
-  createdAt
-  updatedAt            set by supervisor on correction
-  updatedBy            supervisor name
-```
+Calidad y patrones
 
-## Components
-
-| Component      | Role                                                  |
-| -------------- | ----------------------------------------------------- |
-| `ShiftHeader`  | Header form, freezes on submit, calls `createShift()` |
-| `HoleEntry`    | Repetitive barreno form, calls `createHole()`         |
-| `ConfirmModal` | Confirmation dialog before submitting shift           |
-| `HoleLog`      | Running list + total meters                           |
-| `Toast`        | Global notification                                   |
-
-## Supervisor Corrections
-
-Use `updateHole(holeId, patch, name)` from `src/lib/firebase.js` to correct any hole by its Firebase ID. The `updatedAt` and `updatedBy` fields are written automatically — full audit trail.
+- Inyección de dependencias para facilitar pruebas/mocks (repositorios y managers).
+- Separación de responsabilidades: mapeos DB ↔ domain en repositorios; UI solo formatea para visualización.
+- Consideraciones de timezone: app estandariza uso `America/Bogota` en formato visual; consultas diarias se filtran por campo `date` en DB.
+- Manejo de estado Offline: app guarda datos localmente si no hay conexión, sincroniza al reconectar.

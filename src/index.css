@@ -100,6 +100,7 @@
   }
   .field-input:focus {
     border-color: var(--color-brand-amber);
+    border-width: 2px;
   }
   .field-input--error {
     border-color: var(--color-danger) !important;

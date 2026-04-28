@@ -101,7 +101,7 @@ export default function ExportDayModal({
           <div>
             <div className="section-title">Exportar registros</div>
             <div className="mt-[0.35rem] font-mono text-[0.75rem] text-(--color-text-muted)">
-              {/* Consulta Firebase por fecha exacta y descarga archivo Excel. */}
+              {/* Consulta base de datos por fecha exacta y descarga archivo Excel. */}
               Requiere conexión a internet | El proceso puede tardar unos
               segundos dependiendo la carga del día seleccionado.
             </div>

@@ -1,50 +1,22 @@
 export default function KpiCard({ label, value, sub, color }) {
   return (
-    <div style={{
-      background: 'var(--color-surface-1)',
-      border: '1px solid var(--color-border-default)',
-      borderRadius: 'var(--radius-card)',
-      padding: '16px 18px',
-      position: 'relative',
-      overflow: 'hidden',
-      minHeight: 'auto',
-    }}>
-      <div style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        height: 3,
-        background: color,
-      }} />
-      <div style={{
-        fontFamily: 'var(--font-mono)',
-        fontSize: 10,
-        textTransform: 'uppercase',
-        letterSpacing: '0.12em',
-        color: 'var(--color-text-muted)',
-        marginBottom: 10,
-      }}>
+    <div className="bg-(--color-surface-1) border border-(--color-border-default) rounded-(--radius-card) p-[16px_18px] relative overflow-hidden">
+      <div
+        className="absolute top-0 left-0 right-0 h-0.75"
+        style={{ background: color }}
+      />
+      <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-(--color-text-muted) mb-2.5">
         {label}
       </div>
-      <div style={{
-        fontFamily: 'var(--font-mono)',
-        fontSize: 30,
-        fontWeight: 500,
-        color,
-        lineHeight: 1,
-      }}>
+      <div
+        className="font-mono text-[30px] font-medium leading-none"
+        style={{ color }}
+      >
         {value}
       </div>
-      <div style={{
-        fontSize: 8,
-        color: 'var(--color-text-muted)',
-        marginTop: 8,
-        textTransform: 'uppercase',
-        letterSpacing: '0.04em',
-      }}>
+      <div className="text-[8px] text-(--color-text-muted) mt-2 uppercase tracking-[0.04em]">
         {sub}
       </div>
     </div>
-  )
+  );
 }

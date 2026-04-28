@@ -1,4 +1,5 @@
 import LiveBadge from "./LiveBadge";
+import { formatTime } from "../lib/datetime";
 
 function ExportExcelIcon() {
   return (
@@ -85,7 +86,7 @@ export default function SupervisorHeader({
           <LiveBadge />
           <div className="font-font-mono text-[0.6rem] text-(--color-text-faint) font-semibold">
             {lastUpdate
-              ? `Act. ${new Date(lastUpdate).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`
+              ? `Act. ${formatTime(lastUpdate, "America/Bogota", "es-CO", { second: "2-digit" })}`
               : "-"}
           </div>
         </div>
