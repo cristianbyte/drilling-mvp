@@ -51,7 +51,7 @@ shifts/{shiftId}       ← one per shift (header, frozen)
   date
   shift                DIA | NOCHE
   blastId              # Voladura
-  diameter             mm
+  diameter
   elevation            m
   pattern
   createdAt

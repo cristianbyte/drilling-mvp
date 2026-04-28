@@ -1,10 +1,12 @@
+import { getTodayDateKey } from "../lib/datetime";
+
 export default function FrozenField({ label, value }) {
   const displayValue =
     value === null || value === undefined || value === ''
       ? '—'
       : value
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = getTodayDateKey()
   const hasDateWarning = label === 'Fecha' && value && value !== today
 
   return (

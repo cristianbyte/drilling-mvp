@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { createClientId } from "../lib/ids";
+import { getTodayDateKey } from "../lib/datetime";
 import { showToast } from "./Toast";
 import FrozenField from "./FronzenField";
+import { blastRepository } from "../di/container";
 
 const SHIFTS = ["DIA", "NOCHE"];
-const LOCATIONS = ["HATILLO NORTE", "HATILLO SUR"];
 
 function today() {
-  return new Date().toISOString().slice(0, 10);
+  return getTodayDateKey();
 }
 
 function getSign(elev) {
@@ -18,21 +19,10 @@ function getAbs(elev) {
   return String(elev).replace(/^[+-]/, "");
 }
 
-function splitElevation(value) {
-  if (!value) return { elevationSign: "+", elevationValue: "" };
-  const stringValue = String(value).trim();
-  if (stringValue.startsWith("-"))
-    return { elevationSign: "-", elevationValue: stringValue.slice(1) };
-  if (stringValue.startsWith("+"))
-    return { elevationSign: "+", elevationValue: stringValue.slice(1) };
-  return { elevationSign: "+", elevationValue: stringValue };
-}
-
 function emptyForm() {
   return {
     operatorName: "",
     equipment: "",
-    location: "",
     date: today(),
     shift: "DIA",
     blastId: "",
@@ -52,9 +42,8 @@ function normalizeShift(shift) {
   return {
     operatorName: shift.operatorName || "",
     equipment: shift.equipment || "",
-    location: shift.location || "",
     date: shift.date || today(),
-    shift: shift.shift || "DIA",
+    shift: shift.shiftType || "DIA",
     blastId: shift.blastId || "",
     diameter: shift.diameter ?? "",
     elevation: shift.elevation || "",
@@ -67,21 +56,93 @@ export default function ShiftHeader({ onFrozen, initialShift = null }) {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(() => normalizeShift(initialShift));
   const [errors, setErrors] = useState({});
+  const [blasts, setBlasts] = useState([]);
+  const [loadingBlasts, setLoadingBlasts] = useState(true);
+  const [selectedBlastData, setSelectedBlastData] = useState(null);
 
   const active = "border-orange-500 bg-orange-100 text-orange-600";
   const idle = "border-gray-300 bg-gray-100 text-gray-500 hover:bg-gray-200";
 
+  // Load incomplete blasts on mount
   useEffect(() => {
-    if (initialShift) {
-      setForm(normalizeShift(initialShift));
-      setFrozen(true);
-      setErrors({});
-      return;
-    }
+    let active = true;
 
-    setForm(emptyForm());
-    setFrozen(false);
-    setErrors({});
+    const loadBlasts = async () => {
+      try {
+        const data = await blastRepository.fetchIncompleteBlasts();
+        if (active) {
+          setBlasts(data);
+        }
+      } catch (error) {
+        console.error("Error loading blasts:", error);
+      } finally {
+        if (active) {
+          setLoadingBlasts(false);
+        }
+      }
+    };
+
+    loadBlasts();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Load blast data when blastId changes (for frozen view or when selected)
+  useEffect(() => {
+    let active = true;
+
+    const loadBlastData = async () => {
+      if (!form.blastId) {
+        setSelectedBlastData(null);
+        return;
+      }
+
+      // First try to find in loaded blasts
+      const found = blasts.find((b) => b.id === form.blastId);
+      if (found) {
+        if (active) {
+          setSelectedBlastData(found);
+        }
+        return;
+      }
+
+      // If not found and frozen, try to fetch from database
+      if (frozen) {
+        try {
+          const data = await blastRepository.fetchBlastById(form.blastId);
+          if (active && data) {
+            setSelectedBlastData(data);
+          }
+        } catch (error) {
+          console.error("Error loading blast data:", error);
+        }
+      }
+    };
+
+    loadBlastData();
+
+    return () => {
+      active = false;
+    };
+  }, [form.blastId, frozen, blasts]);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      if (initialShift) {
+        setForm(normalizeShift(initialShift));
+        setFrozen(true);
+        setErrors({});
+        return;
+      }
+
+      setForm(emptyForm());
+      setFrozen(false);
+      setErrors({});
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
   }, [initialShift]);
 
   function set(key, val) {
@@ -89,8 +150,8 @@ export default function ShiftHeader({ onFrozen, initialShift = null }) {
     setErrors((e) => ({ ...e, [key]: false }));
   }
 
-  const required = ["operatorName", "equipment", "location", "blastId"];
-  const isValid = required.every((k) => form[k]?.trim());
+  const required = ["operatorName", "equipment", "blastId"];
+  const isValid = required.every((k) => form[k]?.toString().trim());
 
   function validate() {
     const errs = {};
@@ -103,12 +164,8 @@ export default function ShiftHeader({ onFrozen, initialShift = null }) {
     }
 
     required.forEach((k) => {
-      if (!form[k]?.trim()) errs[k] = true;
+      if (!form[k]?.toString().trim()) errs[k] = true;
     });
-
-    if (form.blastId && !/^V\d+$/.test(form.blastId)) {
-      errs.blastId = true;
-    }
 
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -122,13 +179,12 @@ export default function ShiftHeader({ onFrozen, initialShift = null }) {
       const elevation = normalizeElevation(form.elevation);
 
       const shiftPayload = {
-        shiftId: createClientId("shift"),
+        shiftId: createClientId(),
         operatorName: form.operatorName.trim(),
         equipment: form.equipment.trim(),
-        location: form.location.trim(),
         date: form.date,
-        shift: form.shift,
-        blastId: form.blastId.trim(),
+        shiftType: form.shift,
+        blastId: form.blastId,
         diameter: form.diameter === "" ? null : parseFloat(form.diameter),
         elevation,
         pattern: form.pattern.trim() || null,
@@ -139,7 +195,7 @@ export default function ShiftHeader({ onFrozen, initialShift = null }) {
       setFrozen(true);
       showToast("Turno iniciado");
       await onFrozen(shiftPayload);
-    } catch (e) {
+    } catch {
       showToast("Error al iniciar turno");
     } finally {
       setSaving(false);
@@ -178,13 +234,19 @@ export default function ShiftHeader({ onFrozen, initialShift = null }) {
         >
           <FrozenField label="Operador" value={form.operatorName} />
           <FrozenField label="Equipo" value={form.equipment} />
-          <FrozenField label="Ubicación" value={form.location} />
+          <FrozenField
+            label="Ubicación"
+            value={selectedBlastData?.location || ""}
+          />
           <FrozenField label="Fecha" value={form.date} />
           <FrozenField label="Turno" value={form.shift} />
-          <FrozenField label="# Voladura" value={form.blastId} />
+          <FrozenField
+            label="# Voladura"
+            value={selectedBlastData?.blastCode || ""}
+          />
           <FrozenField
             label="Diámetro"
-            value={form.diameter !== "" ? form.diameter + " mm" : ""}
+            value={form.diameter !== "" ? form.diameter : ""}
           />
           <FrozenField
             label="Cota"
@@ -230,7 +292,7 @@ export default function ShiftHeader({ onFrozen, initialShift = null }) {
           className="btn-primary"
           style={{ marginTop: "0.25rem" }}
           onClick={handleConfirm}
-          disabled={saving || !isValid}
+          disabled={saving || !isValid || loadingBlasts}
         >
           {saving ? "Iniciando..." : "Iniciar turno"}
         </button>
@@ -289,31 +351,19 @@ export default function ShiftHeader({ onFrozen, initialShift = null }) {
             )}
           </div>
           <div>
-            <label className="field-label">Ubicación *</label>
-            <select
-              className={`field-input${errors.location ? " field-input--error" : ""}`}
-              value={form.location}
-              onChange={(e) => set("location", e.target.value)}
+            <label className="field-label">Ubicación</label>
+            <div
+              className="field-input"
+              style={{
+                background: "var(--color-surface-2)",
+                color: "var(--color-text-muted)",
+                cursor: "default",
+                display: "flex",
+                alignItems: "center",
+              }}
             >
-              <option value="">Selecciona una ubicación</option>
-              {LOCATIONS.map((location) => (
-                <option key={location} value={location}>
-                  {location}
-                </option>
-              ))}
-            </select>
-            {errors.location && (
-              <p
-                style={{
-                  marginTop: "0.25rem",
-                  fontFamily: "var(--font-mono)",
-                  fontSize: "0.625rem",
-                  color: "var(--color-danger)",
-                }}
-              >
-                Requerido
-              </p>
-            )}
+              {selectedBlastData?.location || "—"}
+            </div>
           </div>
         </div>
 
@@ -326,15 +376,23 @@ export default function ShiftHeader({ onFrozen, initialShift = null }) {
         >
           <div>
             <label className="field-label"># Voladura *</label>
-            <input
+            <select
               className={`field-input${errors.blastId ? " field-input--error" : ""}`}
-              type="text"
-              placeholder="V123"
               value={form.blastId}
               onChange={(e) => set("blastId", e.target.value)}
-              pattern="^V\\d+$"
-              title="Formato: V seguido de números (ej: V123)"
-            />
+              disabled={loadingBlasts}
+            >
+              <option value="">
+                {loadingBlasts
+                  ? "Cargando voladuras..."
+                  : "Selecciona una voladura"}
+              </option>
+              {blasts.map((blast) => (
+                <option key={blast.id} value={blast.id}>
+                  {blast.blastCode}
+                </option>
+              ))}
+            </select>
             {errors.blastId && (
               <p
                 style={{
@@ -383,7 +441,7 @@ export default function ShiftHeader({ onFrozen, initialShift = null }) {
           }}
         >
           <div>
-            <label className="field-label">Diámetro (mm)</label>
+            <label className="field-label">Diámetro</label>
             <input
               className="field-input"
               type="number"
@@ -395,7 +453,7 @@ export default function ShiftHeader({ onFrozen, initialShift = null }) {
           </div>
           <div>
             <label className="field-label">Cota (m)</label>
-            <div className="flex items-center rounded-btn border border-border-default gap-0 overflow-hidden">
+            <div className="flex items-center border border-(--color-border-default) rounded-lg gap-0 overflow-hidden">
               <div
                 title="Cambiar signo"
                 style={{ minWidth: "3.5rem" }}
@@ -404,7 +462,7 @@ export default function ShiftHeader({ onFrozen, initialShift = null }) {
                   const abs = getAbs(form.elevation);
                   set("elevation", (sign === "+" ? "-" : "+") + abs);
                 }}
-                className="flex items-center justify-center px-3 py-3 font-mono font-bold transition-all select-none rounded-l-none border-gray-300 bg-gray-100 text-gray-500 hover:bg-gray-200"
+                className="flex items-center justify-center rounded-tl-lg rounded-bl-lg px-3 py-3 font-mono font-bold transition-all select-none rounded-l-none border-gray-300 bg-gray-100 text-gray-500 hover:bg-gray-200"
               >
                 <span className="scale-250 border-none">
                   {getSign(form.elevation) === "+" ? "+" : "-"}

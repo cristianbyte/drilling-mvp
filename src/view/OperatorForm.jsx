@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import HoleLog from "../components/HoleLog";
 import Toast, { showToast, useToast } from "../components/Toast";
 import { holeRepository, shiftRepository } from "../di/container";
-import { ready as firebaseReady } from "../infrastructure/firebase/firebaseClient";
+import { supabaseReady } from "../infrastructure/supabase/supabaseClient";
 import { createClientId } from "../lib/ids";
 import {
   clearAllRecords,
@@ -10,6 +10,7 @@ import {
   deleteRecord,
   getPendingRecords,
   loadOperatorSnapshot,
+  markRecordPending,
   markRecordSynced,
   saveOperatorSnapshot,
   saveRecord,
@@ -19,6 +20,20 @@ import HoleEntry from "../components/HoleEntry";
 
 function buildSnapshot(shift, holes) {
   return { shift, holes, savedAt: Date.now() };
+}
+
+function isSyncedValue(value) {
+  return value === true || value === 1 || value === "synced";
+}
+
+function createPendingRecord(id, kind, data) {
+  return {
+    id,
+    kind,
+    data: { ...data, synced: false },
+    synced: 0,
+    createdAt: data.createdAt || Date.now(),
+  };
 }
 
 export default function OperatorForm() {
@@ -31,85 +46,148 @@ export default function OperatorForm() {
   const syncingRef = useRef(false);
   const toastState = useToast();
 
-  const syncPendingRecords = useCallback(async (manual = false) => {
-    if (syncingRef.current) return;
-    if (!window.navigator.onLine || !firebaseReady) {
-      if (manual) showToast("Sin conexión para sincronizar");
-      return;
-    }
-
-    syncingRef.current = true;
-    setSyncing(true);
-
-    try {
-      const pending = await getPendingRecords();
-      if (!pending.length) {
-        if (manual) showToast("Todo está sincronizado");
+  const syncPendingRecords = useCallback(
+    async (manual = false) => {
+      if (syncingRef.current) return;
+      if (!window.navigator.onLine || !supabaseReady) {
+        if (manual) showToast("Sin conexion para sincronizar");
         return;
       }
 
-      let latestShift = null;
-      const syncedHoleIds = [];
+      syncingRef.current = true;
+      setSyncing(true);
 
-      for (const record of pending) {
-        if (record.kind === "shift") {
-          const { shiftId, synced, ...shiftData } = record.data;
-          const alreadyExists = await shiftRepository.shiftExists(record.id);
-          if (!alreadyExists) {
-            await shiftRepository.upsertShift(record.id, shiftData);
-          }
-          await markRecordSynced(record.id);
-          latestShift = { ...record.data, synced: true, shiftId: record.id };
+      try {
+        const pending = await getPendingRecords();
+        if (!pending.length) {
+          if (manual) showToast("Todo esta sincronizado");
+          return;
         }
 
-        if (record.kind === "hole") {
-          const { shiftId, holeId, synced, ...holeData } = record.data;
-          const alreadyExists = await holeRepository.holeExists(record.id);
-          if (!alreadyExists) {
-            await holeRepository.upsertHole(record.id, shiftId, holeData);
-          } else {
-            await holeRepository.updateHole(
+        const syncedShiftIds = new Set();
+        const pendingShiftIds = new Set();
+        const syncedHoleIds = new Set();
+        const pendingHoleIds = new Set();
+        let skippedShiftSync = false;
+
+        for (const record of pending) {
+          if (record.kind === "shift") {
+            const hasHoles = holes.some((hole) => hole.shiftId === record.id);
+            if (!hasHoles) {
+              skippedShiftSync = true;
+              continue;
+            }
+
+            const shiftData = { ...record.data, shiftId: record.id };
+            delete shiftData.synced;
+
+            const responseId = await shiftRepository.upsertShift(
               record.id,
-              {
-                depth: holeData.depth,
-                ceiling: holeData.ceiling,
-                floor: holeData.floor,
-                holeNumber: holeData.holeNumber,
-              },
-              holeData.updatedBy || latestShift?.operatorName || "Operador",
+              shiftData,
             );
+
+            if (responseId === record.id) {
+              await markRecordSynced(record.id);
+              syncedShiftIds.add(record.id);
+            } else {
+              await markRecordPending(record.id, "Supabase no confirmo turno");
+              pendingShiftIds.add(record.id);
+            }
           }
-          await markRecordSynced(record.id);
-          syncedHoleIds.push(record.id);
+
+          if (record.kind === "hole") {
+            const holeData = { ...record.data, holeId: record.id };
+            const shiftId = holeData.shiftId;
+            const hasManualUpdate =
+              holeData.updatedAt !== undefined && holeData.updatedAt !== null;
+            delete holeData.synced;
+
+            const responseId = hasManualUpdate
+              ? await holeRepository.holeExists(record.id).then((exists) =>
+                  exists
+                    ? holeRepository.updateHole(
+                        record.id,
+                        {
+                          depth: holeData.depth,
+                          ceiling: holeData.ceiling,
+                          floor: holeData.floor,
+                        },
+                        holeData.updatedBy || shift?.operatorName || "Operador",
+                      )
+                    : holeRepository.upsertHole(record.id, shiftId, holeData),
+                )
+              : await holeRepository.upsertHole(record.id, shiftId, holeData);
+
+            if (responseId === record.id) {
+              await markRecordSynced(record.id);
+              syncedHoleIds.add(record.id);
+            } else {
+              await markRecordPending(
+                record.id,
+                "Supabase no confirmo barreno",
+              );
+              pendingHoleIds.add(record.id);
+            }
+          }
         }
-      }
 
-      if (latestShift) {
-        setShift((prev) =>
-          prev && prev.shiftId === latestShift.shiftId ? latestShift : prev,
-        );
-      }
+        if (
+          syncedShiftIds.size === 0 &&
+          pendingShiftIds.size === 0 &&
+          syncedHoleIds.size === 0 &&
+          pendingHoleIds.size === 0 &&
+          skippedShiftSync
+        ) {
+          if (manual) showToast("Crea primer barreno para sincronizar turno");
+          return;
+        }
 
-      if (syncedHoleIds.length) {
-        setHoles((prev) =>
-          prev.map((h) =>
-            syncedHoleIds.includes(h.holeId) ? { ...h, synced: true } : h,
-          ),
-        );
-      }
+        if (syncedShiftIds.size || pendingShiftIds.size) {
+          setShift((prev) => {
+            if (!prev) return prev;
+            if (syncedShiftIds.has(prev.shiftId))
+              return { ...prev, synced: true };
+            if (pendingShiftIds.has(prev.shiftId))
+              return { ...prev, synced: false };
+            return prev;
+          });
+        }
 
-      if (manual) {
-        showToast("Registros sincronizados");
+        if (syncedHoleIds.size || pendingHoleIds.size) {
+          setHoles((prev) =>
+            prev.map((hole) =>
+              syncedHoleIds.has(hole.holeId)
+                ? { ...hole, synced: true }
+                : pendingHoleIds.has(hole.holeId)
+                  ? { ...hole, synced: false }
+                  : hole,
+            ),
+          );
+        }
+
+        if (manual) {
+          if (pendingShiftIds.size || pendingHoleIds.size) {
+            const hasSuccess = syncedShiftIds.size || syncedHoleIds.size;
+            showToast(
+              hasSuccess
+                ? "Sincronizacion parcial"
+                : "Supabase no confirmo recepcion",
+            );
+          } else {
+            showToast("Registros sincronizados");
+          }
+        }
+      } catch {
+        if (manual) {
+          showToast("Fallo la sincronizacion");
+        }
+      } finally {
+        syncingRef.current = false;
+        setSyncing(false);
       }
-    } catch (error) {
-      if (manual) {
-        showToast("Falló la sincronización");
-      }
-    } finally {
-      syncingRef.current = false;
-      setSyncing(false);
-    }
-  }, []);
+    },
+    [holes, shift?.operatorName],
+  );
 
   useEffect(() => {
     let active = true;
@@ -120,7 +198,7 @@ export default function OperatorForm() {
         setShift(snapshot.shift || null);
         setHoles(Array.isArray(snapshot.holes) ? snapshot.holes : []);
       })
-      .catch((error) => {
+      .catch(() => {
         // Offline restore failed
       })
       .finally(() => {
@@ -154,43 +232,45 @@ export default function OperatorForm() {
     if (!hydrated) return;
 
     if (!shift && holes.length === 0) {
-      clearOperatorSnapshot().catch((error) => {
+      clearOperatorSnapshot().catch(() => {
         // Offline clear failed
       });
       return;
     }
 
-    saveOperatorSnapshot(buildSnapshot(shift, holes)).catch((error) => {
+    saveOperatorSnapshot(buildSnapshot(shift, holes)).catch(() => {
       // Offline save failed
     });
   }, [shift, holes, hydrated]);
 
   const pendingSyncCount =
-    (shift && !shift.synced ? 1 : 0) + holes.filter((h) => !h.synced).length;
+    (shift && !isSyncedValue(shift.synced) ? 1 : 0) +
+    holes.filter((hole) => !isSyncedValue(hole.synced)).length;
 
   useEffect(() => {
     if (!hydrated || !isOnline || pendingSyncCount === 0) return;
-    syncPendingRecords();
+
+    const timeoutId = window.setTimeout(() => {
+      syncPendingRecords();
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
   }, [hydrated, isOnline, pendingSyncCount, syncPendingRecords]);
 
-  const totalMeters = holes.reduce((sum, h) => sum + h.depth, 0);
+  const totalMeters = holes.reduce((sum, hole) => sum + hole.depth, 0);
   const nextHoleNumber = holes.length + 1;
 
   async function handleShiftFrozen(shiftData) {
     const localShift = {
       ...shiftData,
       synced: false,
-      shiftId: shiftData.shiftId || createClientId("shift"),
+      shiftId: shiftData.shiftId || createClientId(),
     };
     setShift(localShift);
 
-    await saveRecord({
-      id: localShift.shiftId,
-      kind: "shift",
-      data: localShift,
-      synced: 0,
-      createdAt: Date.now(),
-    });
+    await saveRecord(
+      createPendingRecord(localShift.shiftId, "shift", localShift),
+    );
   }
 
   async function handleHoleSaved(hole) {
@@ -204,67 +284,50 @@ export default function OperatorForm() {
     };
     setHoles((prev) => [...prev, localHole]);
 
-    await saveRecord({
-      id: localHole.holeId,
-      kind: "hole",
-      data: localHole,
-      synced: 0,
-      createdAt: Date.now(),
-    });
+    await saveRecord(createPendingRecord(localHole.holeId, "hole", localHole));
   }
 
   async function handleHoleDelete(holeId) {
-    const targetHole = holes.find((h) => h.holeId === holeId);
-    setHoles((prev) => prev.filter((h) => h.holeId !== holeId));
+    const targetHole = holes.find((hole) => hole.holeId === holeId);
+    setHoles((prev) => prev.filter((hole) => hole.holeId !== holeId));
 
     try {
       await deleteRecord(holeId);
-      if (targetHole?.synced && window.navigator.onLine && firebaseReady) {
+      if (
+        isSyncedValue(targetHole?.synced) &&
+        window.navigator.onLine &&
+        supabaseReady
+      ) {
         await holeRepository.deleteHole(holeId);
       }
-    } catch (e) {
+    } catch {
       // Delete failed
     }
   }
 
   async function handleHoleEdit(holeId, patch) {
-    const targetHole = holes.find((h) => h.holeId === holeId);
+    const targetHole = holes.find((hole) => hole.holeId === holeId);
     if (!targetHole || !shift) return;
 
-    const operatorName = shift.operatorName || "Operador";
-    const editedAt = Date.now();
-    const syncNow = Boolean(
-      targetHole.synced && window.navigator.onLine && firebaseReady,
-    );
     const nextHole = {
       ...targetHole,
       ...patch,
-      updatedAt: editedAt,
-      updatedBy: operatorName,
-      synced: syncNow ? targetHole.synced : false,
+      updatedAt: Date.now(),
+      updatedBy: shift.operatorName || "Operador",
+      synced: false,
     };
 
-    setHoles((prev) => prev.map((h) => (h.holeId === holeId ? nextHole : h)));
-
-    if (syncNow) {
-      await holeRepository.updateHole(holeId, patch, operatorName);
-      return;
-    }
-
-    await saveRecord({
-      id: nextHole.holeId,
-      kind: "hole",
-      data: nextHole,
-      synced: 0,
-      createdAt: nextHole.createdAt || Date.now(),
-    });
+    setHoles((prev) =>
+      prev.map((hole) => (hole.holeId === holeId ? nextHole : hole)),
+    );
+    await saveRecord(createPendingRecord(nextHole.holeId, "hole", nextHole));
   }
 
   async function handleReset() {
     if (
       holes.length &&
       !window.confirm(
-        "¿Resetear turno? Los datos ya están guardados localmente y en Firebase cuando hay conexión.",
+        "Resetear turno? Datos siguen guardados localmente y en Supabase cuando hay conexion.",
       )
     )
       return;
@@ -275,7 +338,7 @@ export default function OperatorForm() {
     try {
       await clearOperatorSnapshot();
       await clearAllRecords();
-    } catch (error) {
+    } catch {
       // Reset cleanup failed
     }
   }
@@ -332,7 +395,7 @@ export default function OperatorForm() {
               color: "var(--color-brand-amber)",
             }}
           >
-            Perforación
+            Perforacion
           </span>
         </div>
 
@@ -345,14 +408,14 @@ export default function OperatorForm() {
               letterSpacing: "0.1em",
               color: !isOnline
                 ? "var(--color-brand-amber)"
-                : firebaseReady
+                : supabaseReady
                   ? "var(--color-brand-emerald)"
                   : "var(--color-text-faint)",
             }}
           >
             {!isOnline
               ? "○ Offline listo"
-              : firebaseReady
+              : supabaseReady
                 ? "● Online"
                 : "○ Offline"}
           </span>
@@ -372,11 +435,11 @@ export default function OperatorForm() {
                 transition: "color 0.15s",
                 padding: "0.25rem",
               }}
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.color = "var(--color-danger)")
+              onMouseEnter={(event) =>
+                (event.currentTarget.style.color = "var(--color-danger)")
               }
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.color = "var(--color-text-muted)")
+              onMouseLeave={(event) =>
+                (event.currentTarget.style.color = "var(--color-text-muted)")
               }
             >
               Reset
@@ -404,10 +467,9 @@ export default function OperatorForm() {
               onDelete={handleHoleDelete}
               onEdit={handleHoleEdit}
               operatorName={shift.operatorName}
-              shiftLocation={shift.location}
               onForceSync={() => syncPendingRecords(true)}
               syncDisabled={
-                pendingSyncCount === 0 || !isOnline || !firebaseReady
+                pendingSyncCount === 0 || !isOnline || !supabaseReady
               }
               syncing={syncing}
             />
