@@ -75,7 +75,7 @@ export default function HoleLog({
 
   return (
     <>
-      <div className="section-card">
+      <div className="section-card w-full min-w-0 max-w-full">
         <div className="section-header">
           <div
             className="dot"
@@ -151,12 +151,14 @@ export default function HoleLog({
               return (
                 <div
                   key={hole.holeId}
-                  className={index === 0 ? "slide-down" : ""}
+                  className={`${index === 0 ? "slide-down" : ""} min-w-0`}
                   style={{
                     display: "flex",
                     alignItems: "center",
+                    flexWrap: "wrap",
                     justifyContent: "space-between",
                     padding: "0.75rem 1rem",
+                    gap: "0.75rem",
                     borderBottom: "1px solid var(--color-border-subtle)",
                   }}
                 >
@@ -164,6 +166,8 @@ export default function HoleLog({
                     style={{
                       display: "flex",
                       alignItems: "center",
+                      minWidth: 0,
+                      flex: "1 1 16rem",
                       gap: "0.75rem",
                     }}
                   >
@@ -203,6 +207,7 @@ export default function HoleLog({
                       style={{
                         display: "flex",
                         flexDirection: "column",
+                        minWidth: 0,
                         gap: "0.125rem",
                       }}
                     >
@@ -213,6 +218,7 @@ export default function HoleLog({
                           color: "var(--color-text-muted)",
                           textTransform: "uppercase",
                           letterSpacing: "0.08em",
+                          overflowWrap: "anywhere",
                         }}
                       >
                         {detailText}
@@ -224,6 +230,9 @@ export default function HoleLog({
                     style={{
                       display: "flex",
                       alignItems: "center",
+                      flex: "0 1 auto",
+                      flexWrap: "wrap",
+                      justifyContent: "flex-end",
                       gap: "0.75rem",
                     }}
                   >

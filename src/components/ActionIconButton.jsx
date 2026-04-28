@@ -11,25 +11,13 @@ export default function ActionIconButton({
       type="button"
       onClick={disabled ? undefined : onClick}
       title={title}
-      disabled={disabled}
       style={{
-        background: "none",
-        border: "none",
-        cursor: disabled ? "default" : "pointer",
-        color,
-        opacity: disabled ? 0.7 : 1,
-        padding: "0.25rem",
-        borderRadius: "0.25rem",
-        transition: "color 0.15s",
-        display: "flex",
-        alignItems: "center",
+        color: disabled ? "var(--color-text-disabled)" : color,
       }}
-      onMouseEnter={(e) => {
-        if (!disabled) e.currentTarget.style.color = hoverColor;
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.color = color;
-      }}
+      disabled={disabled}
+      className="flex items-center p-1 rounded bg-transparent border-none
+       transition-colors duration-150 disabled:cursor-default 
+       cursor-pointer disabled:opacity-70 text-(--btn-color) enabled:hover:text-(--btn-hover-color)"
     >
       {children}
     </button>

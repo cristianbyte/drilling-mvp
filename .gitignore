@@ -61,3 +61,6 @@ node_modules/
 
 # Agents
 .agents/
+
+# HTTP files
+.http

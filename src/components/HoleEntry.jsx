@@ -70,7 +70,7 @@ export default function HoleEntry({ nextHoleNumber, onSaved }) {
   }
 
   return (
-    <div className="section-card">
+    <div className="section-card w-full min-w-0 max-w-full">
       <div className="section-header">
         <div
           className="dot"

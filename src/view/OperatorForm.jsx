@@ -344,74 +344,23 @@ export default function OperatorForm() {
   }
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "var(--color-surface-base)",
-        paddingBottom: "5rem",
-      }}
-    >
-      <header
-        style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 10,
-          background:
-            "color-mix(in srgb, var(--color-surface-1) 95%, transparent)",
-          backdropFilter: "blur(8px)",
-          borderBottom: "1px solid var(--color-border-subtle)",
-          padding: "0.75rem 1rem",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <span
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: "0.6875rem",
-              textTransform: "uppercase",
-              letterSpacing: "0.18em",
-              color: "var(--color-text-muted)",
-            }}
-          >
+    <div className="min-h-screen bg-[color:var(--color-surface-base)] pb-20">
+      <header className="sticky top-0 z-10 backdrop-blur-md border-b border-[color:var(--color-border-subtle)] py-3 px-4 flex items-center justify-between bg-[color:var(--color-surface-1)]/95">
+        <div className="flex items-center gap-2">
+          <span className="font-[var(--font-mono)] text-[0.6875rem] uppercase tracking-[0.18em] text-[color:var(--color-text-muted)]">
             FOR-PO-04
           </span>
-          <span
-            style={{
-              fontFamily: "var(--font-mono)",
-              color: "var(--color-border-strong)",
-            }}
-          >
+          <span className="font-[var(--font-mono)] text-[color:var(--color-border-strong)]">
             ·
           </span>
-          <span
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: "0.6875rem",
-              textTransform: "uppercase",
-              letterSpacing: "0.18em",
-              color: "var(--color-brand-amber)",
-            }}
-          >
+          <span className="font-[var(--font-mono)] text-[0.6875rem] uppercase tracking-[0.18em] text-[color:var(--color-brand-amber)]">
             Perforacion
           </span>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+        <div className="flex items-center gap-3">
           <span
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: "0.5625rem",
-              textTransform: "uppercase",
-              letterSpacing: "0.1em",
-              color: !isOnline
-                ? "var(--color-brand-amber)"
-                : supabaseReady
-                  ? "var(--color-brand-emerald)"
-                  : "var(--color-text-faint)",
-            }}
+            className={`font-[var(--font-mono)] text-[0.5625rem] uppercase tracking-[0.1em] ${!isOnline ? "text-[color:var(--color-brand-amber)]" : supabaseReady ? "text-[color:var(--color-brand-emerald)]" : "text-[color:var(--color-text-faint)]"}`}
           >
             {!isOnline
               ? "○ Offline listo"
@@ -423,24 +372,7 @@ export default function OperatorForm() {
           {shift && (
             <button
               onClick={handleReset}
-              style={{
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                fontFamily: "var(--font-mono)",
-                fontSize: "0.625rem",
-                textTransform: "uppercase",
-                letterSpacing: "0.1em",
-                color: "var(--color-text-muted)",
-                transition: "color 0.15s",
-                padding: "0.25rem",
-              }}
-              onMouseEnter={(event) =>
-                (event.currentTarget.style.color = "var(--color-danger)")
-              }
-              onMouseLeave={(event) =>
-                (event.currentTarget.style.color = "var(--color-text-muted)")
-              }
+              className="bg-transparent border-none cursor-pointer font-[var(--font-mono)] text-[0.625rem] uppercase tracking-[0.1em] text-[color:var(--color-text-muted)] transition-colors p-1 hover:text-[color:var(--color-danger)]"
             >
               Reset
             </button>
@@ -448,15 +380,17 @@ export default function OperatorForm() {
         </div>
       </header>
 
-      <div style={{ paddingTop: "1rem" }}>
-        <ShiftHeader
-          key={headerKey}
-          onFrozen={handleShiftFrozen}
-          initialShift={shift}
-        />
+      <div className="mx-auto flex w-full max-w-4xl flex-col items-stretch gap-2 overflow-x-hidden px-2 py-2 sm:px-4 md:px-6 [&_.section-card]:mx-0 [&_.section-card]:w-full [&_.section-card]:min-w-0">
+        <div className="w-full">
+          <ShiftHeader
+            key={headerKey}
+            onFrozen={handleShiftFrozen}
+            initialShift={shift}
+          />
+        </div>
 
         {shift && (
-          <>
+          <div className="w-full">
             <HoleEntry
               nextHoleNumber={nextHoleNumber}
               onSaved={handleHoleSaved}
@@ -473,7 +407,7 @@ export default function OperatorForm() {
               }
               syncing={syncing}
             />
-          </>
+          </div>
         )}
       </div>
 

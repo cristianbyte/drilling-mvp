@@ -57,6 +57,7 @@ export default function ShiftHeader({ onFrozen, initialShift = null }) {
   const [form, setForm] = useState(() => normalizeShift(initialShift));
   const [errors, setErrors] = useState({});
   const [blasts, setBlasts] = useState([]);
+  const [open, setOpen] = useState(false);
   const [loadingBlasts, setLoadingBlasts] = useState(true);
   const [selectedBlastData, setSelectedBlastData] = useState(null);
 
@@ -202,64 +203,56 @@ export default function ShiftHeader({ onFrozen, initialShift = null }) {
     }
   }
 
-  if (frozen) {
+  const FIELDS = (form, blast) => [
+    ["Operador", form.operatorName],
+    ["Equipo", form.equipment],
+    ["Ubicación", blast?.location ?? ""],
+    ["Fecha", form.date],
+    ["Turno", form.shift],
+    ["# Voladura", blast?.blastCode ?? ""],
+    ["Diámetro", form.diameter !== "" ? form.diameter : ""],
+    ["Cota", form.elevation ? form.elevation + " m" : ""],
+    ["Patrón", form.pattern],
+  ];
+
+  if (frozen)
     return (
-      <div className="section-card">
-        <div className="section-header">
-          <div
-            className="dot animate-pulse"
-            style={{ background: "var(--color-brand-emerald)" }}
-          />
-          <span className="section-title">Turno activo</span>
-          <span
-            style={{
-              marginLeft: "auto",
-              fontFamily: "var(--font-mono)",
-              fontSize: "0.625rem",
-              textTransform: "uppercase",
-              letterSpacing: "0.12em",
-              color: "var(--color-brand-emerald)",
-            }}
+      <div className="section-card w-full max-w-full">
+        <div className="p-4">
+          <button
+            onClick={() => setOpen((o) => !o)}
+            className="flex w-full min-w-0 cursor-pointer gap-2 border-0 bg-transparent p-0 text-left"
           >
-            BLOQUEADO
-          </span>
-        </div>
-        <div
-          style={{
-            padding: "1rem",
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: "0.75rem",
-          }}
-        >
-          <FrozenField label="Operador" value={form.operatorName} />
-          <FrozenField label="Equipo" value={form.equipment} />
-          <FrozenField
-            label="Ubicación"
-            value={selectedBlastData?.location || ""}
-          />
-          <FrozenField label="Fecha" value={form.date} />
-          <FrozenField label="Turno" value={form.shift} />
-          <FrozenField
-            label="# Voladura"
-            value={selectedBlastData?.blastCode || ""}
-          />
-          <FrozenField
-            label="Diámetro"
-            value={form.diameter !== "" ? form.diameter : ""}
-          />
-          <FrozenField
-            label="Cota"
-            value={form.elevation ? form.elevation + " m" : ""}
-          />
-          <FrozenField label="Patrón" value={form.pattern} />
+            <div className="dot animate-pulse bg-(--color-brand-emerald) w-2 h-2 mt-1" />
+            <span className="section-title text-[0.7rem]">Turno activo</span>
+            <span className="ml-auto font-(--font-mono) text-[0.55rem] text-(--color-brand-emerald) tracking-widest">
+              BLOQUEADO {open ? "▲" : "▼"}
+            </span>
+          </button>
+
+          {open && (
+            <div className="mt-2 flex flex-col gap-1">
+              {[
+                ["Operador", form.operatorName],
+                ["Equipo", form.equipment],
+                ["Ubicación", selectedBlastData?.location],
+                ["Fecha", form.date],
+                ["Turno", form.shift],
+                ["# Voladura", selectedBlastData?.blastCode],
+                ["Diámetro", form.diameter],
+                ["Cota", form.elevation ? form.elevation : ""],
+                ["Patrón", form.pattern],
+              ].map(([label, value]) => (
+                <FrozenField key={label} label={label} value={value} />
+              ))}
+            </div>
+          )}
         </div>
       </div>
     );
-  }
 
   return (
-    <div className="section-card">
+    <div className="section-card w-full max-w-full">
       <div className="section-header">
         <div
           className="dot"
@@ -456,13 +449,12 @@ export default function ShiftHeader({ onFrozen, initialShift = null }) {
             <div className="flex items-center border border-(--color-border-default) rounded-lg gap-0 overflow-hidden">
               <div
                 title="Cambiar signo"
-                style={{ minWidth: "3.5rem" }}
                 onClick={() => {
                   const sign = getSign(form.elevation);
                   const abs = getAbs(form.elevation);
                   set("elevation", (sign === "+" ? "-" : "+") + abs);
                 }}
-                className="flex items-center justify-center rounded-tl-lg rounded-bl-lg px-3 py-3 font-mono font-bold transition-all select-none rounded-l-none border-gray-300 bg-gray-100 text-gray-500 hover:bg-gray-200"
+                className="flex items-center justify-center rounded-tl-lg rounded-bl-lg px-4 py-3 font-mono font-bold transition-all select-none rounded-l-none border-gray-300 bg-gray-100 text-gray-500 hover:bg-gray-200"
               >
                 <span className="scale-250 border-none">
                   {getSign(form.elevation) === "+" ? "+" : "-"}
