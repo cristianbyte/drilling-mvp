@@ -10,7 +10,7 @@ import {
 const EMPTY = "";
 
 const COLUMN_CONFIG = [
-  ["Fecha", (row, timeZone) => row.date || getDateKey(row.createdAt, timeZone)],
+  ["Fecha", (row) => row.date || getDateKey(row.createdAt)],
   ["Turno", (row) => row.shift || EMPTY],
   ["Operador", (row) => row.operatorName || EMPTY],
   ["Equipo", (row) => row.equipment || EMPTY],
@@ -23,15 +23,9 @@ const COLUMN_CONFIG = [
   ["Profundidad (m)", (row) => formatNumber(row.depth)],
   ["Techo (m)", (row) => formatNumber(row.ceiling)],
   ["Piso (m)", (row) => formatNumber(row.floor)],
-  [
-    "Fecha registro",
-    (row, timeZone) => formatDateTime(row.createdAt, timeZone),
-  ],
+  ["Fecha registro", (row) => formatDateTime(row.createdAt)],
   ["Actualizado por", (row) => row.updatedBy || EMPTY],
-  [
-    "Actualizado en",
-    (row, timeZone) => formatDateTime(row.updatedAt, timeZone),
-  ],
+  ["Actualizado en", (row) => formatDateTime(row.updatedAt)],
   ["ID turno", (row) => row.shiftId || EMPTY],
   ["ID hoyo", (row) => row.holeId || EMPTY],
 ];
@@ -43,16 +37,11 @@ function formatNumber(value) {
   return numeric;
 }
 
-export function exportRowsToXlsx(
-  rows = [],
-  selectedDate,
-  timeZone = getBrowserTimeZone(),
-) {
+export function exportRowsToXlsx(rows = [], selectedDate) {
   const exportRows = rows
     .filter(
       (row) =>
-        getDateKey(row.createdAt, timeZone) === selectedDate ||
-        row.date === selectedDate,
+        getDateKey(row.createdAt) === selectedDate || row.date === selectedDate,
     )
     .sort((a, b) => {
       const shiftCompare = (a.shift || "").localeCompare(b.shift || "");
@@ -70,7 +59,7 @@ export function exportRowsToXlsx(
 
   const data = exportRows.map((row) =>
     Object.fromEntries(
-      COLUMN_CONFIG.map(([label, getter]) => [label, getter(row, timeZone)]),
+      COLUMN_CONFIG.map(([label, getter]) => [label, getter(row)]),
     ),
   );
 

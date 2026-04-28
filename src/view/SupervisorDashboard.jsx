@@ -131,35 +131,28 @@ export default function SupervisorDashboard() {
     setDeleteTarget(null);
   }, [deleteTarget]);
 
-  const handleExport = useCallback(
-    async (selectedExportDate) => {
-      if (!selectedExportDate) return;
+  const handleExport = useCallback(async (selectedExportDate) => {
+    if (!selectedExportDate) return;
 
-      setExporting(true);
-      setExportFeedback("");
+    setExporting(true);
+    setExportFeedback("");
 
-      try {
-        const exportRows = await holeRepository.fetchSupervisorRows({
-          date: selectedExportDate,
-        });
-        const exportedCount = exportRowsToXlsx(
-          exportRows,
-          selectedExportDate,
-          timeZone,
-        );
+    try {
+      const exportRows = await holeRepository.fetchSupervisorRows({
+        date: selectedExportDate,
+      });
+      const exportedCount = exportRowsToXlsx(exportRows, selectedExportDate);
 
-        if (exportedCount > 0) {
-          setIsExportModalOpen(false);
-          return;
-        }
-
-        setExportFeedback("Sin registros para fecha seleccionada.");
-      } finally {
-        setExporting(false);
+      if (exportedCount > 0) {
+        setIsExportModalOpen(false);
+        return;
       }
-    },
-    [timeZone],
-  );
+
+      setExportFeedback("Sin registros para fecha seleccionada.");
+    } finally {
+      setExporting(false);
+    }
+  }, []);
 
   return (
     <div
