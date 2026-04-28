@@ -8,7 +8,7 @@ import { blastRepository } from "../di/container";
 const SHIFTS = ["DIA", "NOCHE"];
 
 function today() {
-  return getTodayDateKey();
+  return getTodayDateKey("America/Bogota");
 }
 
 function getSign(elev) {

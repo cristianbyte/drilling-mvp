@@ -23,16 +23,15 @@ const COLUMN_CONFIG = [
   ["Profundidad (m)", (row) => formatNumber(row.depth)],
   ["Techo (m)", (row) => formatNumber(row.ceiling)],
   ["Piso (m)", (row) => formatNumber(row.floor)],
-  ["Hora registro", (row, timeZone) => formatTime(row.createdAt, timeZone)],
   [
     "Fecha registro",
     (row, timeZone) => formatDateTime(row.createdAt, timeZone),
   ],
+  ["Actualizado por", (row) => row.updatedBy || EMPTY],
   [
     "Actualizado en",
     (row, timeZone) => formatDateTime(row.updatedAt, timeZone),
   ],
-  ["Actualizado por", (row) => row.updatedBy || EMPTY],
   ["ID turno", (row) => row.shiftId || EMPTY],
   ["ID hoyo", (row) => row.holeId || EMPTY],
 ];

@@ -8,7 +8,11 @@ import KpiCard from "../components/KpiCard";
 import SupervisorHeader from "../components/SupervisorHeader";
 import SupervisorStats from "../components/SupervisorStats";
 import SupervisorTable from "../components/SupervisorTable";
-import { formatTime, getBrowserTimeZone, getTodayDateKey } from "../lib/datetime";
+import {
+  formatTime,
+  getBrowserTimeZone,
+  getTodayDateKey,
+} from "../lib/datetime";
 import { exportRowsToXlsx } from "../lib/exportXlsx";
 
 function sortByCreatedAtDesc(rows) {
@@ -28,10 +32,13 @@ export default function SupervisorDashboard() {
   const [exportFeedback, setExportFeedback] = useState("");
 
   const loadDashboardData = useCallback(async () => {
-    const rows = await holeRepository.fetchSupervisorRows({ limit: 50 });
+    const rows = await holeRepository.fetchSupervisorRows({
+      limit: 50,
+      date: selectedDate,
+    });
     setRecentRows(rows);
     setLastUpdate(Date.now());
-  }, []);
+  }, [selectedDate]);
 
   useEffect(() => {
     if (!supabaseReady) return;
@@ -43,7 +50,7 @@ export default function SupervisorDashboard() {
     }, 0);
 
     const unsubRecentRows = holeRepository.subscribeSupervisorRows(
-      { limit: 50 },
+      { limit: 50, date: selectedDate },
       async (rows) => {
         setRecentRows(rows);
         setLastUpdate(Date.now());
@@ -124,33 +131,35 @@ export default function SupervisorDashboard() {
     setDeleteTarget(null);
   }, [deleteTarget]);
 
-  const handleExport = useCallback(async (selectedExportDate) => {
-    if (!selectedExportDate) return;
+  const handleExport = useCallback(
+    async (selectedExportDate) => {
+      if (!selectedExportDate) return;
 
-    setExporting(true);
-    setExportFeedback("");
+      setExporting(true);
+      setExportFeedback("");
 
-    try {
-      const exportRows = await holeRepository.fetchSupervisorRows({
-        date: selectedExportDate,
-        timeZone,
-      });
-      const exportedCount = exportRowsToXlsx(
-        exportRows,
-        selectedExportDate,
-        timeZone,
-      );
+      try {
+        const exportRows = await holeRepository.fetchSupervisorRows({
+          date: selectedExportDate,
+        });
+        const exportedCount = exportRowsToXlsx(
+          exportRows,
+          selectedExportDate,
+          timeZone,
+        );
 
-      if (exportedCount > 0) {
-        setIsExportModalOpen(false);
-        return;
+        if (exportedCount > 0) {
+          setIsExportModalOpen(false);
+          return;
+        }
+
+        setExportFeedback("Sin registros para fecha seleccionada.");
+      } finally {
+        setExporting(false);
       }
-
-      setExportFeedback("Sin registros para fecha seleccionada.");
-    } finally {
-      setExporting(false);
-    }
-  }, [timeZone]);
+    },
+    [timeZone],
+  );
 
   return (
     <div

@@ -1,74 +1,20 @@
 import { supabase } from "./supabaseClient";
 import { HoleFull, HoleDrilling, HoleLoading } from "../../core/entities/Hole";
 import { IHoleRepository } from "../../core/interfaces/IHoleRepository";
+import { SubscriptionManager } from "./SubscriptionManager";
 
 export class SupabaseHoleRepository implements IHoleRepository {
+  private subscriptionMgr: SubscriptionManager;
+
+  constructor(
+    subscriptionMgr: SubscriptionManager = new SubscriptionManager(),
+  ) {
+    this.subscriptionMgr = subscriptionMgr;
+  }
+
   private getRelationOne<T>(value: T | T[] | null | undefined): T | null {
     if (Array.isArray(value)) return value[0] ?? null;
     return value ?? null;
-  }
-
-  private getTimeZoneOffsetMs(date: Date, timeZone: string): number {
-    const parts = new Intl.DateTimeFormat("en-US", {
-      timeZone,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hourCycle: "h23",
-    }).formatToParts(date);
-
-    const values = parts.reduce(
-      (acc, part) => {
-        if (part.type !== "literal") acc[part.type] = part.value;
-        return acc;
-      },
-      {} as Record<string, string>,
-    );
-
-    const asUtc = Date.UTC(
-      Number(values.year),
-      Number(values.month) - 1,
-      Number(values.day),
-      Number(values.hour),
-      Number(values.minute),
-      Number(values.second),
-    );
-
-    return asUtc - date.getTime();
-  }
-
-  private zonedDateTimeToUtc(
-    dateString: string,
-    timeZone: string,
-    hour = 0,
-  ): Date {
-    const [year, month, day] = dateString.split("-").map(Number);
-    let utcDate = new Date(Date.UTC(year, month - 1, day, hour, 0, 0, 0));
-
-    for (let index = 0; index < 2; index += 1) {
-      const offset = this.getTimeZoneOffsetMs(utcDate, timeZone);
-      const nextUtcDate = new Date(
-        Date.UTC(year, month - 1, day, hour, 0, 0, 0) - offset,
-      );
-
-      if (nextUtcDate.getTime() === utcDate.getTime()) break;
-      utcDate = nextUtcDate;
-    }
-
-    return utcDate;
-  }
-
-  private getDateRangeForTimeZone(dateString: string, timeZone: string) {
-    const start = this.zonedDateTimeToUtc(dateString, timeZone, 0);
-    const end = this.zonedDateTimeToUtc(dateString, timeZone, 24);
-
-    return {
-      startIso: start.toISOString(),
-      endIso: end.toISOString(),
-    };
   }
 
   private mapDrillingFromDb(row: any): HoleDrilling | null {
@@ -145,7 +91,6 @@ export class SupabaseHoleRepository implements IHoleRepository {
   private createSupervisorRowsQuery(options?: {
     limit?: number;
     date?: string;
-    timeZone?: string;
   }) {
     let query = supabase
       .from("holes")
@@ -172,13 +117,7 @@ export class SupabaseHoleRepository implements IHoleRepository {
       )
       .order("created_at", { ascending: false });
 
-    if (options?.date && options?.timeZone) {
-      const { startIso, endIso } = this.getDateRangeForTimeZone(
-        options.date,
-        options.timeZone,
-      );
-      query = query.gte("created_at", startIso).lt("created_at", endIso);
-    } else if (options?.date) {
+    if (options?.date) {
       query = query.eq("shifts.date", options.date);
     }
 
@@ -336,47 +275,11 @@ export class SupabaseHoleRepository implements IHoleRepository {
     blastId: string,
     callback: (data: HoleFull[]) => void,
   ): () => void {
-    const subscription = supabase
-      .channel(`holes:${blastId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "holes",
-          filter: `blast_id=eq.${blastId}`,
-        },
-        () => {
-          this.fetchHolesByBlast(blastId).then(callback);
-        },
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "hole_drilling",
-        },
-        () => {
-          this.fetchHolesByBlast(blastId).then(callback);
-        },
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "hole_loading",
-        },
-        () => {
-          this.fetchHolesByBlast(blastId).then(callback);
-        },
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(subscription);
-    };
+    return this.subscriptionMgr.subscribeHolesByBlast(
+      blastId,
+      (id) => this.fetchHolesByBlast(id),
+      callback,
+    );
   }
 
   async deleteHole(holeId: string): Promise<void> {
@@ -522,7 +425,6 @@ export class SupabaseHoleRepository implements IHoleRepository {
   async fetchSupervisorRows(options?: {
     limit?: number;
     date?: string;
-    timeZone?: string;
   }): Promise<any[]> {
     const { data, error } = await this.createSupervisorRowsQuery(options);
 
@@ -538,159 +440,56 @@ export class SupabaseHoleRepository implements IHoleRepository {
     options: { limit?: number; date?: string },
     callback: (data: any[]) => void,
   ): () => void {
-    const refetch = async () => {
-      const rows = await this.fetchSupervisorRows(options);
-      callback(rows);
-    };
-    const channelName = `supervisor-rows:${options?.date ?? "recent"}:${options?.limit ?? "all"}`;
-
-    const subscription = supabase
-      .channel(channelName)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "holes",
-        },
-        refetch,
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "hole_drilling",
-        },
-        refetch,
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "shifts",
-        },
-        refetch,
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "blasts",
-        },
-        refetch,
-      )
-      .subscribe((status, error) => {
-        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-          console.error(`Realtime ${channelName} status:`, status, error);
-        }
-
-        if (status === "SUBSCRIBED") {
-          console.info(`Realtime ${channelName} subscribed`);
-        }
-      });
-
-    return () => {
-      supabase.removeChannel(subscription);
-    };
+    return this.subscriptionMgr.subscribeSupervisorRows(
+      options,
+      () => this.fetchSupervisorRows(options),
+      callback,
+    );
   }
 
   subscribeRecentHoles(
     limit: number,
     callback: (data: Record<string, any>) => void,
   ): () => void {
-    const subscription = supabase
-      .channel("recent-holes")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "holes",
-        },
-        async () => {
-          const { data, error } = await supabase
-            .from("holes")
-            .select(
-              `
-              *,
-              hole_drilling(*),
-              hole_loading(*)
-            `,
-            )
-            .order("created_at", { ascending: false })
-            .limit(limit);
+    return this.subscriptionMgr.subscribeRecentHoles(
+      limit,
+      (l) => this.getRecentHolesAsRecord(l),
+      callback,
+    );
+  }
 
-          if (!error) {
-            const result: Record<string, any> = {};
-            (data ?? []).forEach((row) => {
-              const hole = this.mapHoleFromDb(row);
-              result[hole.id] = {
-                holeId: hole.id,
-                shiftId: hole.shiftId,
-                holeNumber: hole.holeNumber,
-                depth: hole.drilling?.depth,
-                ceiling: hole.drilling?.ceiling,
-                floor: hole.drilling?.floor,
-                createdAt: new Date(hole.createdAt).getTime(),
-                updatedAt: hole.drilling?.updatedAt
-                  ? new Date(hole.drilling.updatedAt).getTime()
-                  : null,
-                updatedBy: hole.drilling?.updatedBy,
-              };
-            });
-            callback(result);
-          }
-        },
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "hole_drilling",
-        },
-        async () => {
-          const { data, error } = await supabase
-            .from("holes")
-            .select(
-              `
-              *,
-              hole_drilling(*),
-              hole_loading(*)
-            `,
-            )
-            .order("created_at", { ascending: false })
-            .limit(limit);
+  private async getRecentHolesAsRecord(
+    limit: number,
+  ): Promise<Record<string, any>> {
+    const { data, error } = await supabase
+      .from("holes")
+      .select(`*, hole_drilling(*), hole_loading(*)`)
+      .order("created_at", { ascending: false })
+      .limit(limit);
 
-          if (!error) {
-            const result: Record<string, any> = {};
-            (data ?? []).forEach((row) => {
-              const hole = this.mapHoleFromDb(row);
-              result[hole.id] = {
-                holeId: hole.id,
-                shiftId: hole.shiftId,
-                holeNumber: hole.holeNumber,
-                depth: hole.drilling?.depth,
-                ceiling: hole.drilling?.ceiling,
-                floor: hole.drilling?.floor,
-                createdAt: new Date(hole.createdAt).getTime(),
-                updatedAt: hole.drilling?.updatedAt
-                  ? new Date(hole.drilling.updatedAt).getTime()
-                  : null,
-                updatedBy: hole.drilling?.updatedBy,
-              };
-            });
-            callback(result);
-          }
-        },
-      )
-      .subscribe();
+    if (error) {
+      console.error("Error fetching recent holes:", error);
+      return {};
+    }
 
-    return () => {
-      supabase.removeChannel(subscription);
-    };
+    const result: Record<string, any> = {};
+    (data ?? []).forEach((row) => {
+      const hole = this.mapHoleFromDb(row);
+      result[hole.id] = {
+        holeId: hole.id,
+        shiftId: hole.shiftId,
+        holeNumber: hole.holeNumber,
+        depth: hole.drilling?.depth,
+        ceiling: hole.drilling?.ceiling,
+        floor: hole.drilling?.floor,
+        createdAt: new Date(hole.createdAt).getTime(),
+        updatedAt: hole.drilling?.updatedAt
+          ? new Date(hole.drilling.updatedAt).getTime()
+          : null,
+        updatedBy: hole.drilling?.updatedBy,
+      };
+    });
+
+    return result;
   }
 }

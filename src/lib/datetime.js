@@ -1,8 +1,9 @@
 const DEFAULT_LOCALE = "es-CO";
 const DATE_KEY_LOCALE = "sv-SE";
+const DEFAULT_TIMEZONE = "America/Bogota";
 
 export function getBrowserTimeZone() {
-  return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  return DEFAULT_TIMEZONE;
 }
 
 export function getDateKey(
