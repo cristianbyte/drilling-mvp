@@ -4,6 +4,7 @@ import { getTodayDateKey } from "../lib/datetime";
 import { showToast } from "./Toast";
 import FrozenField from "./FronzenField";
 import { blastRepository } from "../di/container";
+import { supabase } from "../infrastructure/supabase/supabaseClient";
 
 const SHIFTS = ["DIA", "NOCHE"];
 
@@ -66,18 +67,33 @@ export default function ShiftHeader({ onFrozen, initialShift = null }) {
 
   // Load incomplete blasts on mount
   useEffect(() => {
-    let active = true;
+    let mounted = true;
 
     const loadBlasts = async () => {
       try {
-        const data = await blastRepository.fetchIncompleteBlasts();
-        if (active) {
-          setBlasts(data);
+        const { data, error } = await supabase
+          .from("blasts")
+          .select("id, blast_code, location")
+          .eq("is_complete", false)
+          .order("created_at", { ascending: false });
+
+        if (error) {
+          throw error;
+        }
+
+        if (mounted) {
+          setBlasts(
+            (data ?? []).map((blast) => ({
+              id: blast.id,
+              blastCode: blast.blast_code,
+              location: blast.location,
+            })),
+          );
         }
       } catch (error) {
         console.error("Error loading blasts:", error);
       } finally {
-        if (active) {
+        if (mounted) {
           setLoadingBlasts(false);
         }
       }
@@ -86,13 +102,13 @@ export default function ShiftHeader({ onFrozen, initialShift = null }) {
     loadBlasts();
 
     return () => {
-      active = false;
+      mounted = false;
     };
   }, []);
 
   // Load blast data when blastId changes (for frozen view or when selected)
   useEffect(() => {
-    let active = true;
+    let mounted = true;
 
     const loadBlastData = async () => {
       if (!form.blastId) {
@@ -103,7 +119,7 @@ export default function ShiftHeader({ onFrozen, initialShift = null }) {
       // First try to find in loaded blasts
       const found = blasts.find((b) => b.id === form.blastId);
       if (found) {
-        if (active) {
+        if (mounted) {
           setSelectedBlastData(found);
         }
         return;
@@ -113,7 +129,7 @@ export default function ShiftHeader({ onFrozen, initialShift = null }) {
       if (frozen) {
         try {
           const data = await blastRepository.fetchBlastById(form.blastId);
-          if (active && data) {
+          if (mounted && data) {
             setSelectedBlastData(data);
           }
         } catch (error) {
@@ -125,7 +141,7 @@ export default function ShiftHeader({ onFrozen, initialShift = null }) {
     loadBlastData();
 
     return () => {
-      active = false;
+      mounted = false;
     };
   }, [form.blastId, frozen, blasts]);
 
@@ -203,15 +219,19 @@ export default function ShiftHeader({ onFrozen, initialShift = null }) {
     }
   }
 
-  const FIELDS = (form, blast) => [
+  // Bloque frozen en el padre
+  const hasDateWarn =
+    form.date && form.date !== getTodayDateKey("America/Bogota");
+
+  const fields = [
     ["Operador", form.operatorName],
     ["Equipo", form.equipment],
-    ["Ubicación", blast?.location ?? ""],
+    ["Ubicación", selectedBlastData?.location],
     ["Fecha", form.date],
     ["Turno", form.shift],
-    ["# Voladura", blast?.blastCode ?? ""],
-    ["Diámetro", form.diameter !== "" ? form.diameter : ""],
-    ["Cota", form.elevation ? form.elevation + " m" : ""],
+    ["# Voladura", selectedBlastData?.blastCode],
+    ["Diámetro", form.diameter],
+    ["Cota", form.elevation ?? ""],
     ["Patrón", form.pattern],
   ];
 
@@ -219,30 +239,36 @@ export default function ShiftHeader({ onFrozen, initialShift = null }) {
     return (
       <div className="section-card w-full max-w-full">
         <div className="p-4">
+          {/* Header */}
           <button
             onClick={() => setOpen((o) => !o)}
-            className="flex w-full min-w-0 cursor-pointer gap-2 border-0 bg-transparent p-0 text-left"
+            className="flex w-full min-w-0 cursor-pointer gap-2 border-0 bg-transparent p-0 text-left items-center"
           >
-            <div className="dot animate-pulse bg-(--color-brand-emerald) w-2 h-2 mt-1" />
+            <div className="dot animate-pulse bg-(--color-brand-emerald) w-2 h-2 mt-0.5 shrink-0" />
             <span className="section-title text-[0.7rem]">Turno activo</span>
-            <span className="ml-auto font-(--font-mono) text-[0.55rem] text-(--color-brand-emerald) tracking-widest">
-              BLOQUEADO {open ? "▲" : "▼"}
+
+            {/* Warning badge visible aunque esté colapsado */}
+            {!open && hasDateWarn && (
+              <span className="ml-1 overflow-hidden whitespace-nowrap w-20 inline-block align-middle">
+                <span
+                  className="inline-block text-[0.5rem] font-(--font-mono) uppercase tracking-wider text-(--color-brand-amber) drop-shadow-[0_0_4px_var(--color-brand-amber)]"
+                  style={{ animation: "marquee 6s linear infinite" }}
+                >
+                  FECHA DESACTUALIZADA — IGNORAR TURNO NOCHE &nbsp;&nbsp;&nbsp;
+                </span>
+              </span>
+            )}
+
+            <span className="ml-auto font-(--font-mono) text-[0.55rem] text-(--color-brand-emerald) tracking-widest flex items-center gap-1">
+              BLOQUEADO
+              <span className="text-[0.5rem]">{open ? "▲" : "▼"}</span>
             </span>
           </button>
 
+          {/* Panel */}
           {open && (
-            <div className="mt-2 flex flex-col gap-1">
-              {[
-                ["Operador", form.operatorName],
-                ["Equipo", form.equipment],
-                ["Ubicación", selectedBlastData?.location],
-                ["Fecha", form.date],
-                ["Turno", form.shift],
-                ["# Voladura", selectedBlastData?.blastCode],
-                ["Diámetro", form.diameter],
-                ["Cota", form.elevation ? form.elevation : ""],
-                ["Patrón", form.pattern],
-              ].map(([label, value]) => (
+            <div className="mt-3 flex flex-col gap-1 border-t border-(--color-border-subtle) pt-2">
+              {fields.map(([label, value]) => (
                 <FrozenField key={label} label={label} value={value} />
               ))}
             </div>

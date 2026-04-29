@@ -1,15 +1,31 @@
-import { Blast, SiteEnum } from "../entities/Blast";
+import { Blast, BlastFull, SiteEnum } from "../entities/entities";
 
 export interface IBlastRepository {
   createBlast(
-    data: Omit<Blast, "id" | "createdAt" | "completedAt" | "isComplete">,
+    data: Omit<
+      Blast,
+      | "id"
+      | "createdAt"
+      | "updatedAt"
+      | "updatedBy"
+      | "isComplete"
+      | "completedAt"
+      | "densityComplete"
+      | "sample1"
+      | "sample2"
+      | "sample3"
+      | "sample4"
+      | "finalWeight"
+    >,
   ): Promise<string | null>;
+  fetchBlastById(id: string): Promise<Blast | null>;
   fetchBlastsByDate(date: string): Promise<Blast[]>;
-  fetchBlastById(blastId: string): Promise<Blast | null>;
   fetchBlastsByLocation(location: SiteEnum): Promise<Blast[]>;
-  fetchIncompleteBlasts(): Promise<Blast[]>;
-  subscribeBlastsByDate(
-    date: string,
-    callback: (data: Blast[]) => void,
-  ): () => void;
+  fetchBlastFull(id: string): Promise<BlastFull | null>;
+  upsertDensity(
+    blastId: string,
+    patch: Pick<Blast, "sample1" | "sample2" | "sample3" | "sample4" | "finalWeight">,
+    updatedBy: string,
+  ): Promise<void>;
+  subscribeBlastsByDate(date: string, cb: (data: Blast[]) => void): () => void;
 }

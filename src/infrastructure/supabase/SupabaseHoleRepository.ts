@@ -1,7 +1,71 @@
 import { supabase } from "./supabaseClient";
-import { HoleFull, HoleDrilling, HoleLoading } from "../../core/entities/Hole";
+import {
+  HoleDrilling,
+  HoleFull,
+  HoleLoading,
+  Leader,
+  Operator,
+} from "../../core/entities/entities";
 import { IHoleRepository } from "../../core/interfaces/IHoleRepository";
 import { SubscriptionManager } from "./SubscriptionManager";
+
+type DbOperatorRow = {
+  id: string;
+  name: string;
+  shift_type: Operator["shiftType"];
+  equipment: string;
+  date: string;
+  elevation: number | null;
+  pattern: string | null;
+  diameter: number | null;
+  created_at: string;
+};
+
+type DbLeaderRow = {
+  id: string;
+  name: string;
+  created_at: string;
+};
+
+type DbHoleDrillingRow = {
+  id: string;
+  hole_id: string;
+  operator_id: string;
+  depth: number | null;
+  ceiling: number | null;
+  floor: number | null;
+  created_at: string;
+  updated_at: string | null;
+  updated_by: string | null;
+  operators: DbOperatorRow | DbOperatorRow[] | null;
+};
+
+type DbHoleLoadingRow = {
+  id: string;
+  hole_id: string;
+  leader_id: string;
+  planned_depth: number | null;
+  planned_emulsion: number | null;
+  planned_stemming_initial: number | null;
+  planned_stemming_final: number | null;
+  leveling: number | null;
+  deck: number | null;
+  emulsion_total: number | null;
+  stemming_final: number | null;
+  created_at: string;
+  updated_at: string | null;
+  updated_by: string | null;
+  leaders: DbLeaderRow | DbLeaderRow[] | null;
+};
+
+type DbHoleRow = {
+  id: string;
+  blast_id: string;
+  hole_number: number;
+  created_at: string;
+  hole_drilling: DbHoleDrillingRow | DbHoleDrillingRow[] | null;
+  hole_loading: DbHoleLoadingRow | DbHoleLoadingRow[] | null;
+};
 
 export class SupabaseHoleRepository implements IHoleRepository {
   private subscriptionMgr: SubscriptionManager;
@@ -13,162 +77,154 @@ export class SupabaseHoleRepository implements IHoleRepository {
   }
 
   private getRelationOne<T>(value: T | T[] | null | undefined): T | null {
-    if (Array.isArray(value)) return value[0] ?? null;
+    if (Array.isArray(value)) {
+      return value[0] ?? null;
+    }
+
     return value ?? null;
   }
 
-  private mapDrillingFromDb(row: any): HoleDrilling | null {
-    if (!row) return null;
+  private mapOperatorFromDb(row: DbOperatorRow): Operator {
     return {
-      depth: row.depth,
-      ceiling: row.ceiling,
-      floor: row.floor,
-      filledAt: row.filled_at,
-      updatedAt: row.updated_at,
-      updatedBy: row.updated_by,
+      id: row.id,
+      name: row.name,
+      shiftType: row.shift_type,
+      equipment: row.equipment,
+      date: row.date,
+      elevation: row.elevation,
+      pattern: row.pattern,
+      diameter: row.diameter,
+      createdAt: row.created_at,
     };
   }
 
-  private mapLoadingFromDb(row: any): HoleLoading | null {
-    if (!row) return null;
+  private mapLeaderFromDb(row: DbLeaderRow): Leader {
     return {
-      areaLeader: row.area_leader,
-      leveling: row.leveling,
-      deck: row.deck,
-      emulsionTotal: row.emulsion_total,
-      finalStemming: row.final_stemming,
-      filledAt: row.filled_at,
+      id: row.id,
+      name: row.name,
+      createdAt: row.created_at,
     };
   }
 
-  private mapHoleFromDb(row: any): HoleFull {
+  private mapHoleFromDb(row: DbHoleRow): HoleFull {
+    const drillingRow = this.getRelationOne(row.hole_drilling);
+    const loadingRow = this.getRelationOne(row.hole_loading);
+    const operatorRow = this.getRelationOne(drillingRow?.operators);
+    const leaderRow = this.getRelationOne(loadingRow?.leaders);
+
     return {
       id: row.id,
       blastId: row.blast_id,
-      shiftId: row.shift_id,
       holeNumber: row.hole_number,
       createdAt: row.created_at,
-      drilling: this.mapDrillingFromDb(row.hole_drilling?.[0]),
-      loading: this.mapLoadingFromDb(row.hole_loading?.[0]),
+      drilling:
+        drillingRow && operatorRow
+          ? {
+              id: drillingRow.id,
+              holeId: drillingRow.hole_id,
+              operatorId: drillingRow.operator_id,
+              depth: drillingRow.depth,
+              ceiling: drillingRow.ceiling,
+              floor: drillingRow.floor,
+              createdAt: drillingRow.created_at,
+              updatedAt: drillingRow.updated_at,
+              updatedBy: drillingRow.updated_by,
+              operator: this.mapOperatorFromDb(operatorRow),
+            }
+          : null,
+      loading:
+        loadingRow && leaderRow
+          ? {
+              id: loadingRow.id,
+              holeId: loadingRow.hole_id,
+              leaderId: loadingRow.leader_id,
+              plannedDepth: loadingRow.planned_depth,
+              plannedEmulsion: loadingRow.planned_emulsion,
+              plannedStemmingInitial: loadingRow.planned_stemming_initial,
+              plannedStemmingFinal: loadingRow.planned_stemming_final,
+              leveling: loadingRow.leveling,
+              deck: loadingRow.deck,
+              emulsionTotal: loadingRow.emulsion_total,
+              stemmingFinal: loadingRow.stemming_final,
+              createdAt: loadingRow.created_at,
+              updatedAt: loadingRow.updated_at,
+              updatedBy: loadingRow.updated_by,
+              leader: this.mapLeaderFromDb(leaderRow),
+            }
+          : null,
     };
   }
 
-  private mapDrillingCreateToDb(data: Partial<HoleDrilling>): any {
-    const mapped: any = {};
-    if (data.depth !== undefined) mapped.depth = data.depth;
-    if (data.ceiling !== undefined) mapped.ceiling = data.ceiling;
-    if (data.floor !== undefined) mapped.floor = data.floor;
-    if (data.filledAt !== undefined) mapped.filled_at = data.filledAt;
-    mapped.updated_at = null;
-    mapped.updated_by = null;
+  private mapDrillingToDb(
+    data: { operatorId: string } & Partial<Pick<HoleDrilling, "depth" | "ceiling" | "floor">>,
+    updatedBy: string,
+  ) {
+    const mapped: Record<string, unknown> = {
+      operator_id: data.operatorId,
+      updated_by: updatedBy,
+    };
+
+    if (data.depth !== undefined) {
+      mapped.depth = data.depth;
+    }
+    if (data.ceiling !== undefined) {
+      mapped.ceiling = data.ceiling;
+    }
+    if (data.floor !== undefined) {
+      mapped.floor = data.floor;
+    }
+
     return mapped;
   }
 
-  private mapDrillingUpdateToDb(data: Partial<HoleDrilling>): any {
-    const mapped: any = {};
-    if (data.depth !== undefined) mapped.depth = data.depth;
-    if (data.ceiling !== undefined) mapped.ceiling = data.ceiling;
-    if (data.floor !== undefined) mapped.floor = data.floor;
-    if (data.filledAt !== undefined) mapped.filled_at = data.filledAt;
-    if (data.updatedBy !== undefined) mapped.updated_by = data.updatedBy;
-    mapped.updated_at = new Date().toISOString();
-    return mapped;
-  }
+  private mapLoadingToDb(
+    data: { leaderId: string } & Partial<
+      Omit<
+        HoleLoading,
+        "id" | "holeId" | "leaderId" | "createdAt" | "updatedAt" | "updatedBy"
+      >
+    >,
+    updatedBy: string,
+  ) {
+    const mapped: Record<string, unknown> = {
+      leader_id: data.leaderId,
+      updated_by: updatedBy,
+    };
 
-  private mapLoadingToDb(data: Partial<HoleLoading>): any {
-    const mapped: any = {};
-    if (data.areaLeader !== undefined) mapped.area_leader = data.areaLeader;
-    if (data.leveling !== undefined) mapped.leveling = data.leveling;
-    if (data.deck !== undefined) mapped.deck = data.deck;
-    if (data.emulsionTotal !== undefined)
+    if (data.plannedDepth !== undefined) {
+      mapped.planned_depth = data.plannedDepth;
+    }
+    if (data.plannedEmulsion !== undefined) {
+      mapped.planned_emulsion = data.plannedEmulsion;
+    }
+    if (data.plannedStemmingInitial !== undefined) {
+      mapped.planned_stemming_initial = data.plannedStemmingInitial;
+    }
+    if (data.plannedStemmingFinal !== undefined) {
+      mapped.planned_stemming_final = data.plannedStemmingFinal;
+    }
+    if (data.leveling !== undefined) {
+      mapped.leveling = data.leveling;
+    }
+    if (data.deck !== undefined) {
+      mapped.deck = data.deck;
+    }
+    if (data.emulsionTotal !== undefined) {
       mapped.emulsion_total = data.emulsionTotal;
-    if (data.finalStemming !== undefined)
-      mapped.final_stemming = data.finalStemming;
-    if (data.filledAt !== undefined) mapped.filled_at = data.filledAt;
+    }
+    if (data.stemmingFinal !== undefined) {
+      mapped.stemming_final = data.stemmingFinal;
+    }
+
     return mapped;
   }
 
-  private createSupervisorRowsQuery(options?: {
-    limit?: number;
-    date?: string;
-  }) {
-    let query = supabase
-      .from("holes")
-      .select(
-        `
-        id,
-        shift_id,
-        hole_number,
-        created_at,
-        hole_drilling(depth, ceiling, floor, updated_at, updated_by),
-        shifts!inner(
-          id,
-          blast_id,
-          operator_name,
-          equipment,
-          shift_type,
-          date,
-          diameter,
-          elevation,
-          pattern,
-          blasts(id, location, blast_code)
-        )
-      `,
-      )
-      .order("created_at", { ascending: false });
-
-    if (options?.date) {
-      query = query.eq("shifts.date", options.date);
-    }
-
-    if (options?.limit) {
-      query = query.limit(options.limit);
-    }
-
-    return query;
-  }
-
-  private mapSupervisorRow(row: any): any {
-    const drilling = this.getRelationOne(row.hole_drilling);
-    const shift = this.getRelationOne(row.shifts);
-    const blast = this.getRelationOne(shift?.blasts);
-
-    return {
-      holeId: row.id,
-      shiftId: row.shift_id,
-      holeNumber: row.hole_number,
-      depth: drilling?.depth ?? null,
-      ceiling: drilling?.ceiling ?? null,
-      floor: drilling?.floor ?? null,
-      createdAt: row.created_at ? new Date(row.created_at).getTime() : null,
-      updatedAt: drilling?.updated_at
-        ? new Date(drilling.updated_at).getTime()
-        : null,
-      updatedBy: drilling?.updated_by ?? null,
-      location: blast?.location ?? "-",
-      operatorName: shift?.operator_name ?? "-",
-      equipment: shift?.equipment ?? "-",
-      blastId: blast?.blast_code ?? shift?.blast_id ?? "-",
-      blastCode: blast?.blast_code ?? "-",
-      shift: shift?.shift_type ?? "-",
-      date: shift?.date ?? "",
-      diameter: shift?.diameter ?? null,
-      elevation: shift?.elevation ?? null,
-      pattern: shift?.pattern ?? "",
-    };
-  }
-
-  async createHole(
-    blastId: string,
-    shiftId: string,
-    holeNumber: number,
-  ): Promise<string | null> {
+  async createHole(blastId: string, holeNumber: number): Promise<string | null> {
     const { data, error } = await supabase
       .from("holes")
       .insert([
         {
           blast_id: blastId,
-          shift_id: shiftId,
           hole_number: holeNumber,
         },
       ])
@@ -189,96 +245,76 @@ export class SupabaseHoleRepository implements IHoleRepository {
       .select(
         `
         *,
-        hole_drilling(*),
-        hole_loading(*)
+        hole_drilling (
+          *,
+          operators ( * )
+        ),
+        hole_loading (
+          *,
+          leaders ( * )
+        )
       `,
       )
       .eq("blast_id", blastId)
-      .order("hole_number", { ascending: true });
+      .order("hole_number");
 
     if (error) {
       console.error("Error fetching holes by blast:", error);
       return [];
     }
 
-    return (data ?? []).map((row) => this.mapHoleFromDb(row));
+    return (data ?? []).map((row) => this.mapHoleFromDb(row as DbHoleRow));
   }
 
-  async updateDrilling(
+  async upsertDrilling(
     holeId: string,
-    data: Partial<HoleDrilling>,
+    data: { operatorId: string } & Partial<Pick<HoleDrilling, "depth" | "ceiling" | "floor">>,
     updatedBy: string,
   ): Promise<void> {
-    const mapped = this.mapDrillingUpdateToDb({ ...data, updatedBy });
+    const { error } = await supabase.from("hole_drilling").upsert(
+      {
+        hole_id: holeId,
+        ...this.mapDrillingToDb(data, updatedBy),
+      },
+      { onConflict: "hole_id" },
+    );
 
-    // First check if drilling record exists
-    const { data: existing } = await supabase
-      .from("hole_drilling")
-      .select("id")
-      .eq("hole_id", holeId)
-      .single();
-
-    if (existing) {
-      const { error } = await supabase
-        .from("hole_drilling")
-        .update(mapped)
-        .eq("hole_id", holeId);
-
-      if (error) {
-        console.error("Error updating drilling:", error);
-      }
-    } else {
-      const { error } = await supabase
-        .from("hole_drilling")
-        .insert([{ hole_id: holeId, ...mapped }]);
-
-      if (error) {
-        console.error("Error inserting drilling:", error);
-      }
+    if (error) {
+      console.error("Error upserting drilling:", error);
     }
   }
 
-  async updateLoading(
+  async upsertLoading(
     holeId: string,
-    data: Partial<HoleLoading>,
+    data: { leaderId: string } & Partial<
+      Omit<
+        HoleLoading,
+        "id" | "holeId" | "leaderId" | "createdAt" | "updatedAt" | "updatedBy"
+      >
+    >,
+    updatedBy: string,
   ): Promise<void> {
-    const mapped = this.mapLoadingToDb(data);
+    const { error } = await supabase.from("hole_loading").upsert(
+      {
+        hole_id: holeId,
+        ...this.mapLoadingToDb(data, updatedBy),
+      },
+      { onConflict: "hole_id" },
+    );
 
-    // First check if loading record exists
-    const { data: existing } = await supabase
-      .from("hole_loading")
-      .select("id")
-      .eq("hole_id", holeId)
-      .single();
-
-    if (existing) {
-      const { error } = await supabase
-        .from("hole_loading")
-        .update(mapped)
-        .eq("hole_id", holeId);
-
-      if (error) {
-        console.error("Error updating loading:", error);
-      }
-    } else {
-      const { error } = await supabase
-        .from("hole_loading")
-        .insert([{ hole_id: holeId, ...mapped }]);
-
-      if (error) {
-        console.error("Error inserting loading:", error);
-      }
+    if (error) {
+      console.error("Error upserting loading:", error);
     }
   }
 
   subscribeHolesByBlast(
     blastId: string,
-    callback: (data: HoleFull[]) => void,
+    cb: (data: HoleFull[]) => void,
   ): () => void {
     return this.subscriptionMgr.subscribeHolesByBlast(
       blastId,
       (id) => this.fetchHolesByBlast(id),
-      callback,
+      cb,
     );
   }
 
@@ -288,208 +324,5 @@ export class SupabaseHoleRepository implements IHoleRepository {
     if (error) {
       console.error("Error deleting hole:", error);
     }
-  }
-
-  // Bridge methods for offline sync compatibility
-  async upsertHole(
-    holeId: string,
-    shiftId: string,
-    data: any,
-  ): Promise<string | null> {
-    const { error } = await supabase.from("holes").upsert({
-      id: holeId,
-      shift_id: shiftId,
-      blast_id: data.blastId,
-      hole_number: data.holeNumber,
-    });
-
-    if (error) {
-      console.error("Error upserting hole:", error);
-      return null;
-    }
-
-    // If there's drilling data, upsert that too
-    if (
-      data.depth !== undefined ||
-      data.ceiling !== undefined ||
-      data.floor !== undefined
-    ) {
-      const drillingData = this.mapDrillingCreateToDb({
-        depth: data.depth,
-        ceiling: data.ceiling,
-        floor: data.floor,
-      });
-
-      const { error: drillingError } = await supabase
-        .from("hole_drilling")
-        .upsert(
-          {
-            hole_id: holeId,
-            ...drillingData,
-          },
-          { onConflict: "hole_id" },
-        );
-
-      if (drillingError) {
-        console.error("Error upserting hole drilling:", drillingError);
-      }
-    }
-
-    return holeId;
-  }
-
-  async holeExists(holeId: string): Promise<boolean> {
-    const { data, error } = await supabase
-      .from("holes")
-      .select("id")
-      .eq("id", holeId)
-      .single();
-
-    if (error && error.code !== "PGRST116") {
-      console.error("Error checking hole existence:", error);
-    }
-
-    return !!data;
-  }
-
-  async updateHole(
-    holeId: string,
-    patch: any,
-    name: string,
-  ): Promise<string | null> {
-    const mapped = this.mapDrillingUpdateToDb({
-      depth: patch.depth,
-      ceiling: patch.ceiling,
-      floor: patch.floor,
-      updatedBy: name,
-    });
-
-    const { error } = await supabase.from("hole_drilling").upsert(
-      {
-        hole_id: holeId,
-        ...mapped,
-      },
-      { onConflict: "hole_id" },
-    );
-
-    if (error) {
-      console.error("Error updating hole:", error);
-      return null;
-    }
-
-    return holeId;
-  }
-
-  // Bridge methods for SupervisorDashboard
-  async fetchHolesByShiftIds(shiftIds: string[]): Promise<Record<string, any>> {
-    if (!shiftIds.length) return {};
-
-    const { data, error } = await supabase
-      .from("holes")
-      .select(
-        `
-        *,
-        hole_drilling(*),
-        hole_loading(*)
-      `,
-      )
-      .in("shift_id", shiftIds)
-      .order("hole_number", { ascending: true });
-
-    if (error) {
-      console.error("Error fetching holes by shift ids:", error);
-      return {};
-    }
-
-    const result: Record<string, any> = {};
-    (data ?? []).forEach((row) => {
-      const hole = this.mapHoleFromDb(row);
-      result[hole.id] = {
-        holeId: hole.id,
-        shiftId: hole.shiftId,
-        holeNumber: hole.holeNumber,
-        depth: hole.drilling?.depth,
-        ceiling: hole.drilling?.ceiling,
-        floor: hole.drilling?.floor,
-        createdAt: new Date(hole.createdAt).getTime(),
-        updatedAt: hole.drilling?.updatedAt
-          ? new Date(hole.drilling.updatedAt).getTime()
-          : null,
-        updatedBy: hole.drilling?.updatedBy,
-      };
-    });
-
-    return result;
-  }
-
-  async fetchSupervisorRows(options?: {
-    limit?: number;
-    date?: string;
-  }): Promise<any[]> {
-    const { data, error } = await this.createSupervisorRowsQuery(options);
-
-    if (error) {
-      console.error("Error fetching supervisor rows:", error);
-      return [];
-    }
-
-    return (data ?? []).map((row) => this.mapSupervisorRow(row));
-  }
-
-  subscribeSupervisorRows(
-    options: { limit?: number; date?: string },
-    callback: (data: any[]) => void,
-  ): () => void {
-    return this.subscriptionMgr.subscribeSupervisorRows(
-      options,
-      () => this.fetchSupervisorRows(options),
-      callback,
-    );
-  }
-
-  subscribeRecentHoles(
-    limit: number,
-    callback: (data: Record<string, any>) => void,
-  ): () => void {
-    return this.subscriptionMgr.subscribeRecentHoles(
-      limit,
-      (l) => this.getRecentHolesAsRecord(l),
-      callback,
-    );
-  }
-
-  private async getRecentHolesAsRecord(
-    limit: number,
-  ): Promise<Record<string, any>> {
-    const { data, error } = await supabase
-      .from("holes")
-      .select(`*, hole_drilling(*), hole_loading(*)`)
-      .order("created_at", { ascending: false })
-      .limit(limit);
-
-    if (error) {
-      console.error("Error fetching recent holes:", error);
-      return {};
-    }
-
-    const result: Record<string, any> = {};
-    (data ?? []).forEach((row) => {
-      const hole = this.mapHoleFromDb(row);
-      result[hole.id] = {
-        holeId: hole.id,
-        shiftId: hole.shiftId,
-        holeNumber: hole.holeNumber,
-        depth: hole.drilling?.depth,
-        ceiling: hole.drilling?.ceiling,
-        floor: hole.drilling?.floor,
-        createdAt: new Date(hole.createdAt).getTime(),
-        updatedAt: hole.drilling?.updatedAt
-          ? new Date(hole.drilling.updatedAt).getTime()
-          : null,
-        updatedBy: hole.drilling?.updatedBy,
-      };
-    });
-
-    return result;
   }
 }

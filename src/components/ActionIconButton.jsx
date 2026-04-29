@@ -2,9 +2,10 @@ export default function ActionIconButton({
   title,
   onClick,
   children,
-  color = "var(--color-text-faint)",
+  color = "var(--color-brand-cyan)",
   hoverColor = color,
   disabled = false,
+  className = "",
 }) {
   return (
     <button
@@ -12,12 +13,11 @@ export default function ActionIconButton({
       onClick={disabled ? undefined : onClick}
       title={title}
       style={{
-        color: disabled ? "var(--color-text-disabled)" : color,
+        "--btn-color": color,
+        "--btn-hover-color": hoverColor,
       }}
       disabled={disabled}
-      className="flex items-center p-1 rounded bg-transparent border-none
-       transition-colors duration-150 disabled:cursor-default 
-       cursor-pointer disabled:opacity-70 text-(--btn-color) enabled:hover:text-(--btn-hover-color)"
+      className={`flex items-center rounded border-none bg-transparent p-1 text-[color:var(--btn-color)] transition-colors duration-150 cursor-pointer enabled:hover:text-[color:var(--btn-hover-color)] disabled:cursor-default disabled:opacity-70 ${className}`}
     >
       {children}
     </button>

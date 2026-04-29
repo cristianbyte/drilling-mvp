@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import HoleLog from "../components/HoleLog";
 import Toast, { showToast, useToast } from "../components/Toast";
-import { holeRepository, shiftRepository } from "../di/container";
+import { holeRepository, operatorRepository } from "../di/container";
 import { supabaseReady } from "../infrastructure/supabase/supabaseClient";
 import { createClientId } from "../lib/ids";
 import {
@@ -33,6 +33,33 @@ function createPendingRecord(id, kind, data) {
     data: { ...data, synced: false },
     synced: 0,
     createdAt: data.createdAt || Date.now(),
+  };
+}
+
+function buildOperatorPayload(shiftData) {
+  return {
+    name: shiftData.operatorName,
+    shiftType: shiftData.shiftType,
+    equipment: shiftData.equipment,
+    date: shiftData.date,
+    elevation:
+      shiftData.elevation === "" || shiftData.elevation === undefined
+        ? null
+        : shiftData.elevation,
+    pattern: shiftData.pattern || null,
+    diameter:
+      shiftData.diameter === "" || shiftData.diameter === undefined
+        ? null
+        : shiftData.diameter,
+  };
+}
+
+function buildDrillingPayload(holeData, operatorId) {
+  return {
+    operatorId,
+    depth: holeData.depth ?? null,
+    ceiling: holeData.ceiling ?? null,
+    floor: holeData.floor ?? null,
   };
 }
 
@@ -68,6 +95,8 @@ export default function OperatorForm() {
         const pendingShiftIds = new Set();
         const syncedHoleIds = new Set();
         const pendingHoleIds = new Set();
+        const syncedShiftData = new Map();
+        const syncedHoleData = new Map();
         let skippedShiftSync = false;
 
         for (const record of pending) {
@@ -81,14 +110,27 @@ export default function OperatorForm() {
             const shiftData = { ...record.data, shiftId: record.id };
             delete shiftData.synced;
 
-            const responseId = await shiftRepository.upsertShift(
-              record.id,
-              shiftData,
-            );
+            const operatorId =
+              shiftData.operatorId ||
+              (await operatorRepository.create(
+                buildOperatorPayload(shiftData),
+              ));
 
-            if (responseId === record.id) {
+            if (operatorId) {
+              const nextShiftData = {
+                ...shiftData,
+                operatorId,
+                synced: true,
+              };
+
+              await saveRecord({
+                ...record,
+                data: nextShiftData,
+                synced: true,
+              });
               await markRecordSynced(record.id);
               syncedShiftIds.add(record.id);
+              syncedShiftData.set(record.id, nextShiftData);
             } else {
               await markRecordPending(record.id, "Supabase no confirmo turno");
               pendingShiftIds.add(record.id);
@@ -97,37 +139,62 @@ export default function OperatorForm() {
 
           if (record.kind === "hole") {
             const holeData = { ...record.data, holeId: record.id };
-            const shiftId = holeData.shiftId;
-            const hasManualUpdate =
-              holeData.updatedAt !== undefined && holeData.updatedAt !== null;
             delete holeData.synced;
 
-            const responseId = hasManualUpdate
-              ? await holeRepository.holeExists(record.id).then((exists) =>
-                  exists
-                    ? holeRepository.updateHole(
-                        record.id,
-                        {
-                          depth: holeData.depth,
-                          ceiling: holeData.ceiling,
-                          floor: holeData.floor,
-                        },
-                        holeData.updatedBy || shift?.operatorName || "Operador",
-                      )
-                    : holeRepository.upsertHole(record.id, shiftId, holeData),
-                )
-              : await holeRepository.upsertHole(record.id, shiftId, holeData);
+            const baseShiftData =
+              syncedShiftData.get(holeData.shiftId) ||
+              (shift?.shiftId === holeData.shiftId ? shift : null);
+            const operatorId = holeData.operatorId || baseShiftData?.operatorId;
+            const blastId = holeData.blastId || baseShiftData?.blastId;
 
-            if (responseId === record.id) {
-              await markRecordSynced(record.id);
-              syncedHoleIds.add(record.id);
-            } else {
+            if (!operatorId || !blastId) {
+              await markRecordPending(
+                record.id,
+                "Falta operador o voladura para sincronizar barreno",
+              );
+              pendingHoleIds.add(record.id);
+              continue;
+            }
+
+            let remoteHoleId = holeData.remoteHoleId;
+            if (!remoteHoleId) {
+              remoteHoleId = await holeRepository.createHole(
+                blastId,
+                holeData.holeNumber,
+              );
+            }
+
+            if (!remoteHoleId) {
               await markRecordPending(
                 record.id,
                 "Supabase no confirmo barreno",
               );
               pendingHoleIds.add(record.id);
+              continue;
             }
+
+            await holeRepository.upsertDrilling(
+              remoteHoleId,
+              buildDrillingPayload(holeData, operatorId),
+              holeData.updatedBy || baseShiftData?.operatorName || "Operador",
+            );
+
+            const nextHoleData = {
+              ...holeData,
+              blastId,
+              operatorId,
+              remoteHoleId,
+              synced: true,
+            };
+
+            await saveRecord({
+              ...record,
+              data: nextHoleData,
+              synced: true,
+            });
+            await markRecordSynced(record.id);
+            syncedHoleIds.add(record.id);
+            syncedHoleData.set(record.id, nextHoleData);
           }
         }
 
@@ -145,23 +212,27 @@ export default function OperatorForm() {
         if (syncedShiftIds.size || pendingShiftIds.size) {
           setShift((prev) => {
             if (!prev) return prev;
-            if (syncedShiftIds.has(prev.shiftId))
-              return { ...prev, synced: true };
-            if (pendingShiftIds.has(prev.shiftId))
+            if (syncedShiftData.has(prev.shiftId)) {
+              return syncedShiftData.get(prev.shiftId);
+            }
+            if (pendingShiftIds.has(prev.shiftId)) {
               return { ...prev, synced: false };
+            }
             return prev;
           });
         }
 
         if (syncedHoleIds.size || pendingHoleIds.size) {
           setHoles((prev) =>
-            prev.map((hole) =>
-              syncedHoleIds.has(hole.holeId)
-                ? { ...hole, synced: true }
-                : pendingHoleIds.has(hole.holeId)
-                  ? { ...hole, synced: false }
-                  : hole,
-            ),
+            prev.map((hole) => {
+              if (syncedHoleData.has(hole.holeId)) {
+                return syncedHoleData.get(hole.holeId);
+              }
+              if (pendingHoleIds.has(hole.holeId)) {
+                return { ...hole, synced: false };
+              }
+              return hole;
+            }),
           );
         }
 
@@ -186,7 +257,7 @@ export default function OperatorForm() {
         setSyncing(false);
       }
     },
-    [holes, shift?.operatorName],
+    [holes, shift],
   );
 
   useEffect(() => {
@@ -278,8 +349,11 @@ export default function OperatorForm() {
 
     const localHole = {
       ...hole,
+      blastId: shift.blastId,
       date: shift.date,
       shiftId: shift.shiftId,
+      operatorId: shift.operatorId || null,
+      remoteHoleId: null,
       synced: false,
     };
     setHoles((prev) => [...prev, localHole]);
@@ -295,10 +369,11 @@ export default function OperatorForm() {
       await deleteRecord(holeId);
       if (
         isSyncedValue(targetHole?.synced) &&
+        targetHole?.remoteHoleId &&
         window.navigator.onLine &&
         supabaseReady
       ) {
-        await holeRepository.deleteHole(holeId);
+        await holeRepository.deleteHole(targetHole.remoteHoleId);
       }
     } catch {
       // Delete failed
@@ -344,23 +419,23 @@ export default function OperatorForm() {
   }
 
   return (
-    <div className="min-h-screen bg-[color:var(--color-surface-base)] pb-20">
-      <header className="sticky top-0 z-10 backdrop-blur-md border-b border-[color:var(--color-border-subtle)] py-3 px-4 flex items-center justify-between bg-[color:var(--color-surface-1)]/95">
+    <div className="min-h-screen bg-(--color-surface-base) pb-20">
+      <header className="sticky top-0 z-10 backdrop-blur-md border-b border-(--color-border-subtle) py-3 px-4 flex items-center justify-between bg-(--color-surface-1)/95">
         <div className="flex items-center gap-2">
-          <span className="font-[var(--font-mono)] text-[0.6875rem] uppercase tracking-[0.18em] text-[color:var(--color-text-muted)]">
+          <span className="font-(--font-mono) text-[0.6875rem] uppercase tracking-[0.18em] text-(--color-text-muted)">
             FOR-PO-04
           </span>
-          <span className="font-[var(--font-mono)] text-[color:var(--color-border-strong)]">
+          <span className="font-(--font-mono) text-(--color-border-strong)">
             ·
           </span>
-          <span className="font-[var(--font-mono)] text-[0.6875rem] uppercase tracking-[0.18em] text-[color:var(--color-brand-amber)]">
+          <span className="font-(--font-mono) text-[0.6875rem] uppercase tracking-[0.18em] text-(--color-brand-amber)">
             Perforacion
           </span>
         </div>
 
         <div className="flex items-center gap-3">
           <span
-            className={`font-[var(--font-mono)] text-[0.5625rem] uppercase tracking-[0.1em] ${!isOnline ? "text-[color:var(--color-brand-amber)]" : supabaseReady ? "text-[color:var(--color-brand-emerald)]" : "text-[color:var(--color-text-faint)]"}`}
+            className={`font-(--font-mono) text-[0.5625rem] uppercase tracking-widest ${!isOnline ? "text-(--color-brand-amber)" : supabaseReady ? "text-(--color-brand-emerald)" : "text-(--color-text-faint)"}`}
           >
             {!isOnline
               ? "○ Offline listo"
@@ -372,7 +447,7 @@ export default function OperatorForm() {
           {shift && (
             <button
               onClick={handleReset}
-              className="bg-transparent border-none cursor-pointer font-[var(--font-mono)] text-[0.625rem] uppercase tracking-[0.1em] text-[color:var(--color-text-muted)] transition-colors p-1 hover:text-[color:var(--color-danger)]"
+              className="bg-transparent border-none cursor-pointer font-(--font-mono) text-[0.625rem] uppercase tracking-widest text-(--color-text-muted) transition-colors p-1 hover:text-(--color-danger)  "
             >
               Reset
             </button>

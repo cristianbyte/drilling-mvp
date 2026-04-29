@@ -19,6 +19,56 @@ function sortByCreatedAtDesc(rows) {
   return [...rows].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 }
 
+function mapHoleToSupervisorRow(blast, hole, selectedDate) {
+  const drilling = hole.drilling;
+  const operator = drilling?.operator;
+
+  if (!drilling || !operator) {
+    return null;
+  }
+
+  if (operator.date !== selectedDate) {
+    return null;
+  }
+
+  return {
+    holeId: hole.id,
+    holeNumber: hole.holeNumber,
+    location: blast.location,
+    operatorName: operator.name,
+    operatorId: operator.id,
+    equipment: operator.equipment,
+    blastId: blast.blastCode,
+    depth: drilling.depth,
+    ceiling: drilling.ceiling,
+    floor: drilling.floor,
+    shift: operator.shiftType,
+    createdAt: drilling.createdAt || hole.createdAt,
+    updatedBy: drilling.updatedBy,
+    updatedAt: drilling.updatedAt,
+    date: operator.date,
+    pattern: operator.pattern,
+    diameter: operator.diameter,
+    elevation: operator.elevation,
+    shiftId: operator.id,
+  };
+}
+
+async function fetchSupervisorRowsByDate(date) {
+  const blasts = await blastRepository.fetchBlastsByDate(date);
+  const fullBlasts = await Promise.all(
+    blasts.map((blast) => blastRepository.fetchBlastFull(blast.id)),
+  );
+
+  return fullBlasts
+    .filter(Boolean)
+    .flatMap((blast) =>
+      blast.holes
+        .map((hole) => mapHoleToSupervisorRow(blast, hole, date))
+        .filter(Boolean),
+    );
+}
+
 export default function SupervisorDashboard() {
   const [recentRows, setRecentRows] = useState([]);
   const [lastUpdate, setLastUpdate] = useState(null);
@@ -32,10 +82,7 @@ export default function SupervisorDashboard() {
   const [exportFeedback, setExportFeedback] = useState("");
 
   const loadDashboardData = useCallback(async () => {
-    const rows = await holeRepository.fetchSupervisorRows({
-      limit: 50,
-      date: selectedDate,
-    });
+    const rows = await fetchSupervisorRowsByDate(selectedDate);
     setRecentRows(rows);
     setLastUpdate(Date.now());
   }, [selectedDate]);
@@ -49,13 +96,6 @@ export default function SupervisorDashboard() {
       });
     }, 0);
 
-    const unsubRecentRows = holeRepository.subscribeSupervisorRows(
-      { limit: 50, date: selectedDate },
-      async (rows) => {
-        setRecentRows(rows);
-        setLastUpdate(Date.now());
-      },
-    );
     const unsubBlastsByDate = blastRepository.subscribeBlastsByDate(
       selectedDate,
       () => {
@@ -67,7 +107,6 @@ export default function SupervisorDashboard() {
 
     return () => {
       window.clearTimeout(timeoutId);
-      unsubRecentRows();
       unsubBlastsByDate();
     };
   }, [loadDashboardData, selectedDate]);
@@ -138,9 +177,7 @@ export default function SupervisorDashboard() {
     setExportFeedback("");
 
     try {
-      const exportRows = await holeRepository.fetchSupervisorRows({
-        date: selectedExportDate,
-      });
+      const exportRows = await fetchSupervisorRowsByDate(selectedExportDate);
       const exportedCount = exportRowsToXlsx(exportRows, selectedExportDate);
 
       if (exportedCount > 0) {

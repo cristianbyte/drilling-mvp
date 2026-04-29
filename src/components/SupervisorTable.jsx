@@ -34,7 +34,7 @@ export default function SupervisorTable({
 }) {
   const headers = [
     "Barreno",
-    "Ubicación",
+    "Ubicacion",
     "Operador",
     "Equipo",
     "Voladura",
@@ -65,7 +65,7 @@ export default function SupervisorTable({
             color: "var(--color-text-muted)",
           }}
         >
-          Últimos registros (máx 50)
+          Ultimos registros (max 50)
         </span>
 
         <div
@@ -78,7 +78,7 @@ export default function SupervisorTable({
         >
           {[
             { key: "TODOS", label: "Todos" },
-            { key: "DIA", label: "Día" },
+            { key: "DIA", label: "Dia" },
             { key: "NOCHE", label: "Noche" },
           ].map(({ key, label }) => (
             <FilterBtn
@@ -182,7 +182,7 @@ export default function SupervisorTable({
                     whiteSpace: "nowrap",
                   }}
                 >
-                  {row.location || "—"}
+                  {row.location || "-"}
                 </td>
                 <td
                   style={{
@@ -190,7 +190,7 @@ export default function SupervisorTable({
                     color: "var(--color-text-primary)",
                   }}
                 >
-                  {row.operatorName || "—"}
+                  {row.operatorName || "-"}
                 </td>
                 <td
                   style={{
@@ -200,7 +200,7 @@ export default function SupervisorTable({
                     fontSize: 12,
                   }}
                 >
-                  {row.equipment || "—"}
+                  {row.equipment || "-"}
                 </td>
                 <td
                   style={{
@@ -210,7 +210,7 @@ export default function SupervisorTable({
                     fontSize: 12,
                   }}
                 >
-                  {row.blastId || "—"}
+                  {row.blastCode || row.blastId || "-"}
                 </td>
                 <td
                   style={{
@@ -223,7 +223,7 @@ export default function SupervisorTable({
                   {Number(row.depth || 0).toFixed(1)} m
                 </td>
                 <td style={{ padding: "10px 12px" }}>
-                  <Tag turno={row.shift || "—"} />
+                  <Tag turno={row.shift || "-"} />
                 </td>
                 <td
                   style={{

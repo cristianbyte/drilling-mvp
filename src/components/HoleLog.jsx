@@ -79,9 +79,9 @@ export default function HoleLog({
         <div className="section-header">
           <div
             className="dot"
-            style={{ background: "var(--color-border-strong)" }}
+            style={{ background: "var(--color-brand-amber)" }}
           />
-          <span className="section-title">Registros del turno</span>
+          <span className="section-title ">Registros del turno</span>
           <ActionIconButton
             title={
               syncDisabled
@@ -98,6 +98,7 @@ export default function HoleLog({
                 : "var(--color-brand-cyan)"
             }
             hoverColor="var(--color-brand-emerald)"
+            className="ml-2 enabled:hover:drop-shadow-[0_0_6px_var(--color-brand-emerald)]"
           >
             <AsyncIcon />
           </ActionIconButton>
@@ -167,8 +168,8 @@ export default function HoleLog({
                       display: "flex",
                       alignItems: "center",
                       minWidth: 0,
-                      flex: "1 1 16rem",
-                      gap: "0.75rem",
+                      flex: "1 1 auto",
+                      gap: "0.3rem",
                     }}
                   >
                     <ActionIconButton
@@ -181,7 +182,7 @@ export default function HoleLog({
                       color={
                         isSynced
                           ? "var(--color-brand-emerald)"
-                          : "var(--color-text-muted)"
+                          : "var(--color-brand-cyan)"
                       }
                     >
                       <SyncStatusIcon synced={isSynced} />
@@ -258,7 +259,7 @@ export default function HoleLog({
                         title="Editar barreno"
                         onClick={() => setEditingHoleId(hole.holeId)}
                         color="var(--color-text-faint)"
-                        hoverColor="var(--color-brand-amber)"
+                        hoverColor="var(--color-brand-cyan)"
                       >
                         <EditIcon />
                       </ActionIconButton>

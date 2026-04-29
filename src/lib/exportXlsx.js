@@ -1,11 +1,5 @@
 import * as XLSX from "xlsx";
-import {
-  formatDateOnly,
-  formatDateTime,
-  formatTime,
-  getBrowserTimeZone,
-  getDateKey,
-} from "./datetime";
+import { formatDateTime, getDateKey } from "./datetime";
 
 const EMPTY = "";
 
@@ -15,19 +9,19 @@ const COLUMN_CONFIG = [
   ["Operador", (row) => row.operatorName || EMPTY],
   ["Equipo", (row) => row.equipment || EMPTY],
   ["Ubicacion", (row) => row.location || EMPTY],
-  ["# Voladura", (row) => row.blastId || EMPTY],
+  ["# Voladura", (row) => row.blastCode || row.blastId || EMPTY],
   ["Patron", (row) => row.pattern || EMPTY],
   ["Diametro", (row) => formatNumber(row.diameter)],
   ["Cota (m)", (row) => formatNumber(row.elevation)],
-  ["# Hoyo", (row) => row.holeNumber ?? EMPTY],
+  ["# Barreno", (row) => row.holeNumber ?? EMPTY],
   ["Profundidad (m)", (row) => formatNumber(row.depth)],
   ["Techo (m)", (row) => formatNumber(row.ceiling)],
   ["Piso (m)", (row) => formatNumber(row.floor)],
   ["Fecha registro", (row) => formatDateTime(row.createdAt)],
   ["Actualizado por", (row) => row.updatedBy || EMPTY],
   ["Actualizado en", (row) => formatDateTime(row.updatedAt)],
-  ["ID turno", (row) => row.shiftId || EMPTY],
-  ["ID hoyo", (row) => row.holeId || EMPTY],
+  ["ID operador", (row) => row.operatorId || row.shiftId || EMPTY],
+  ["ID barreno", (row) => row.holeId || EMPTY],
 ];
 
 function formatNumber(value) {

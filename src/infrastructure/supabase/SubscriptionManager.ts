@@ -1,5 +1,5 @@
 import { supabase } from "./supabaseClient";
-import { HoleFull } from "../../core/entities/Hole";
+import { HoleFull } from "../../core/entities/entities";
 
 export class SubscriptionManager {
   subscribeHolesByBlast(
@@ -76,7 +76,7 @@ export class SubscriptionManager {
         {
           event: "*",
           schema: "public",
-          table: "shifts",
+          table: "operators",
         },
         () => fetchFn().then(callback),
       )
