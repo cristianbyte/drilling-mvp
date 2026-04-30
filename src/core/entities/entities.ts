@@ -87,8 +87,8 @@ export interface HoleLoading {
 
 // JOIN: holes + hole_drilling(+operator) + hole_loading(+leader)
 export interface HoleFull extends Hole {
-  drilling: (HoleDrilling & { operator: Operator }) | null;
-  loading: (HoleLoading & { leader: Leader }) | null;
+  drilling: (HoleDrilling & { operator: Operator | null }) | null;
+  loading: (HoleLoading & { leader: Leader | null }) | null;
 }
 
 // JOIN: blast + all HoleFull — vista supervisor

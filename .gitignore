@@ -61,6 +61,8 @@ node_modules/
 
 # Agents
 .agents/
-
+.claude/
+.continue/
 # HTTP files
 .http
+

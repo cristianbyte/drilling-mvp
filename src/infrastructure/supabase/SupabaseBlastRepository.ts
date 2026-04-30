@@ -149,41 +149,39 @@ export class SupabaseBlastRepository implements IBlastRepository {
       blastId: row.blast_id,
       holeNumber: row.hole_number,
       createdAt: row.created_at,
-      drilling:
-        drillingRow && operatorRow
-          ? {
-              id: drillingRow.id,
-              holeId: drillingRow.hole_id,
-              operatorId: drillingRow.operator_id,
-              depth: drillingRow.depth,
-              ceiling: drillingRow.ceiling,
-              floor: drillingRow.floor,
-              createdAt: drillingRow.created_at,
-              updatedAt: drillingRow.updated_at,
-              updatedBy: drillingRow.updated_by,
-              operator: this.mapOperatorFromDb(operatorRow),
-            }
-          : null,
-      loading:
-        loadingRow && leaderRow
-          ? {
-              id: loadingRow.id,
-              holeId: loadingRow.hole_id,
-              leaderId: loadingRow.leader_id,
-              plannedDepth: loadingRow.planned_depth,
-              plannedEmulsion: loadingRow.planned_emulsion,
-              plannedStemmingInitial: loadingRow.planned_stemming_initial,
-              plannedStemmingFinal: loadingRow.planned_stemming_final,
-              leveling: loadingRow.leveling,
-              deck: loadingRow.deck,
-              emulsionTotal: loadingRow.emulsion_total,
-              stemmingFinal: loadingRow.stemming_final,
-              createdAt: loadingRow.created_at,
-              updatedAt: loadingRow.updated_at,
-              updatedBy: loadingRow.updated_by,
-              leader: this.mapLeaderFromDb(leaderRow),
-            }
-          : null,
+      drilling: drillingRow
+        ? {
+            id: drillingRow.id,
+            holeId: drillingRow.hole_id,
+            operatorId: drillingRow.operator_id,
+            depth: drillingRow.depth,
+            ceiling: drillingRow.ceiling,
+            floor: drillingRow.floor,
+            createdAt: drillingRow.created_at,
+            updatedAt: drillingRow.updated_at,
+            updatedBy: drillingRow.updated_by,
+            operator: operatorRow ? this.mapOperatorFromDb(operatorRow) : null,
+          }
+        : null,
+      loading: loadingRow
+        ? {
+            id: loadingRow.id,
+            holeId: loadingRow.hole_id,
+            leaderId: loadingRow.leader_id,
+            plannedDepth: loadingRow.planned_depth,
+            plannedEmulsion: loadingRow.planned_emulsion,
+            plannedStemmingInitial: loadingRow.planned_stemming_initial,
+            plannedStemmingFinal: loadingRow.planned_stemming_final,
+            leveling: loadingRow.leveling,
+            deck: loadingRow.deck,
+            emulsionTotal: loadingRow.emulsion_total,
+            stemmingFinal: loadingRow.stemming_final,
+            createdAt: loadingRow.created_at,
+            updatedAt: loadingRow.updated_at,
+            updatedBy: loadingRow.updated_by,
+            leader: leaderRow ? this.mapLeaderFromDb(leaderRow) : null,
+          }
+        : null,
     };
   }
 
@@ -260,6 +258,54 @@ export class SupabaseBlastRepository implements IBlastRepository {
     return this.mapBlastFromDb(data as DbBlastRow);
   }
 
+  async fetchAllBlasts(): Promise<Blast[]> {
+    const { data, error } = await supabase
+      .from("blasts")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching all blasts:", error);
+      return [];
+    }
+
+    return (data ?? []).map((row) => this.mapBlastFromDb(row as DbBlastRow));
+  }
+
+  async fetchCargaHeaderData(): Promise<{
+    leaders: Leader[];
+    blasts: Blast[];
+  }> {
+    const [
+      { data: leaders, error: leadersError },
+      { data: blasts, error: blastsError },
+    ] = await Promise.all([
+      supabase.from("leaders").select("*").order("name"),
+      supabase
+        .from("blasts")
+        .select("*")
+        .eq("is_complete", false)
+        .order("created_at", { ascending: false }),
+    ]);
+
+    if (leadersError) {
+      console.error("Error fetching leaders for carga header:", leadersError);
+    }
+
+    if (blastsError) {
+      console.error("Error fetching blasts for carga header:", blastsError);
+    }
+
+    return {
+      leaders: (leaders ?? []).map((row) =>
+        this.mapLeaderFromDb(row as DbLeaderRow),
+      ),
+      blasts: (blasts ?? []).map((row) =>
+        this.mapBlastFromDb(row as DbBlastRow),
+      ),
+    };
+  }
+
   async fetchBlastsByDate(date: string): Promise<Blast[]> {
     const { data: operators, error: operatorsError } = await supabase
       .from("operators")
@@ -286,7 +332,9 @@ export class SupabaseBlastRepository implements IBlastRepository {
       return [];
     }
 
-    const holeIds = [...new Set((drillingRows ?? []).map((row) => row.hole_id))];
+    const holeIds = [
+      ...new Set((drillingRows ?? []).map((row) => row.hole_id)),
+    ];
     if (!holeIds.length) {
       return [];
     }
@@ -338,7 +386,33 @@ export class SupabaseBlastRepository implements IBlastRepository {
   async fetchBlastFull(blastId: string): Promise<BlastFull | null> {
     const { data, error } = await supabase
       .from("blasts")
-      .select("*, holes(*, hole_drilling(*, operators(*)), hole_loading(*, leaders(*)))")
+      .select(
+        "*, holes(*, hole_drilling(*, operators(*)), hole_loading(*, leaders(*)))",
+      )
+      .eq("id", blastId)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Error fetching full blast:", error);
+      return null;
+    }
+
+    if (!data) {
+      return null;
+    }
+
+    return {
+      ...this.mapBlastFromDb(data as DbBlastRow),
+      holes: ((data as DbBlastFullRow).holes ?? [])
+        .map((row) => this.mapHoleFromDb(row))
+        .sort((a, b) => a.holeNumber - b.holeNumber),
+    };
+  }
+
+  async fetchBlastFullLoading(blastId: string): Promise<BlastFull | null> {
+    const { data, error } = await supabase
+      .from("blasts")
+      .select("*, holes(*, hole_loading(*, leaders(*)))")
       .eq("id", blastId)
       .maybeSingle();
 
@@ -384,10 +458,7 @@ export class SupabaseBlastRepository implements IBlastRepository {
     }
   }
 
-  subscribeBlastsByDate(
-    date: string,
-    cb: (data: Blast[]) => void,
-  ): () => void {
+  subscribeBlastsByDate(date: string, cb: (data: Blast[]) => void): () => void {
     const channelName = `blasts:${date}`;
     const subscription = supabase
       .channel(channelName)

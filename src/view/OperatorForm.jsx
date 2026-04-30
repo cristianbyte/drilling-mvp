@@ -8,7 +8,7 @@ import {
   clearAllRecords,
   clearOperatorSnapshot,
   deleteRecord,
-  getPendingRecords,
+  getPendingRecordsByKinds,
   loadOperatorSnapshot,
   markRecordPending,
   markRecordSynced,
@@ -85,7 +85,7 @@ export default function OperatorForm() {
       setSyncing(true);
 
       try {
-        const pending = await getPendingRecords();
+        const pending = await getPendingRecordsByKinds(["shift", "hole"]);
         if (!pending.length) {
           if (manual) showToast("Todo esta sincronizado");
           return;
