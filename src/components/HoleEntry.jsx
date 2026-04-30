@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { createClientId } from "../lib/ids";
 import { showToast } from "./Toast";
 
 function parseOptionalNumber(value) {
@@ -8,42 +7,69 @@ function parseOptionalNumber(value) {
   return Number.isNaN(numeric) ? null : numeric;
 }
 
-export default function HoleEntry({ nextHoleNumber, onSaved }) {
-  const [form, setForm] = useState({ depth: "", ceiling: "", floor: "" });
-  const [error, setError] = useState(false);
+export default function HoleEntry({
+  availableHoles = [],
+  loadingHoles = false,
+  onSaved,
+}) {
+  const [form, setForm] = useState({
+    selectedHoleId: "",
+    depth: "",
+    ceiling: "",
+    floor: "",
+  });
+  const [error, setError] = useState({ selectedHoleId: false, depth: false });
   const [saving, setSaving] = useState(false);
   const depthRef = useRef(null);
-  const required = ["depth"];
+
+  const selectedHole =
+    availableHoles.find((hole) => hole.id === form.selectedHoleId) ?? null;
 
   useEffect(() => {
     depthRef.current?.focus();
   }, []);
 
+  useEffect(() => {
+    if (
+      form.selectedHoleId &&
+      !availableHoles.some((hole) => hole.id === form.selectedHoleId)
+    ) {
+      setForm((current) => ({ ...current, selectedHoleId: "" }));
+    }
+  }, [availableHoles, form.selectedHoleId]);
+
   function setField(key, val) {
-    setForm((f) => ({ ...f, [key]: val }));
-    if (key === "depth") setError(false);
+    setForm((current) => ({ ...current, [key]: val }));
+    setError((current) => ({ ...current, [key]: false }));
   }
 
   function validate() {
-    const d = parseFloat(form.depth);
+    const nextError = {
+      selectedHoleId: !form.selectedHoleId,
+      depth: !parseFloat(form.depth) || parseFloat(form.depth) <= 0,
+    };
 
-    if (!d || d <= 0) {
-      setError(true);
-      depthRef.current?.focus();
+    setError(nextError);
+
+    if (nextError.selectedHoleId || nextError.depth) {
+      if (nextError.depth) {
+        depthRef.current?.focus();
+      }
       return false;
     }
+
     return true;
   }
 
-  const isValid =
-    required.every((key) => form[key] !== "") && parseFloat(form.depth) > 0;
+  const isValid = Boolean(form.selectedHoleId) && parseFloat(form.depth) > 0;
 
   async function handleSubmit() {
-    if (!validate()) return;
+    if (!validate() || !selectedHole) return;
 
     const hole = {
-      holeId: createClientId(),
-      holeNumber: nextHoleNumber,
+      holeId: selectedHole.id,
+      remoteHoleId: selectedHole.id,
+      holeNumber: selectedHole.holeNumber,
       depth: parseFloat(form.depth),
       ceiling: parseOptionalNumber(form.ceiling),
       floor: parseOptionalNumber(form.floor),
@@ -53,90 +79,83 @@ export default function HoleEntry({ nextHoleNumber, onSaved }) {
     setSaving(true);
     try {
       await onSaved(hole);
-      setForm({ depth: "", ceiling: "", floor: "" });
+      setForm({ selectedHoleId: "", depth: "", ceiling: "", floor: "" });
       showToast(
-        `Barreno B-${String(nextHoleNumber).padStart(2, "0")} guardado`,
+        `Barreno ${String(selectedHole.holeNumber).padStart(2, "0")} guardado`,
       );
       setTimeout(() => depthRef.current?.focus(), 80);
-    } catch (e) {
+    } catch {
       showToast("Error al guardar, reintenta");
     } finally {
       setSaving(false);
     }
   }
 
-  function handleKeyDown(e) {
-    if (e.key === "Enter") handleSubmit();
+  function handleKeyDown(event) {
+    if (event.key === "Enter") handleSubmit();
   }
 
   return (
     <div className="section-card w-full min-w-0 max-w-full">
       <div className="section-header">
-        <div
-          className="dot"
-          style={{ background: "var(--color-brand-cyan)" }}
-        />
+        <div className="dot bg-(--color-brand-cyan)" />
         <span className="section-title">Registro de barreno</span>
-        <span
-          style={{
-            marginLeft: "auto",
-            fontFamily: "var(--font-mono)",
-            fontSize: "1.125rem",
-            fontWeight: 600,
-            color: "var(--color-brand-cyan)",
-          }}
-        >
-          B-{String(nextHoleNumber).padStart(2, "0")}
-        </span>
       </div>
 
-      <div
-        style={{
-          padding: "1rem",
-          display: "flex",
-          flexDirection: "column",
-          gap: "0.75rem",
-        }}
-      >
-        <div>
-          <label className="field-label">Profundidad (m) *</label>
-          <input
-            ref={depthRef}
-            className={`field-input${error ? " field-input--error" : ""}`}
-            style={{
-              fontSize: "1.5rem",
-              fontFamily: "var(--font-mono)",
-              padding: "1rem 0.875rem",
-            }}
-            type="number"
-            placeholder="0.0"
-            inputMode="decimal"
-            step="0.1"
-            value={form.depth}
-            onChange={(e) => setField("depth", e.target.value)}
-            onKeyDown={handleKeyDown}
-          />
-          {error && (
-            <p
-              style={{
-                marginTop: "0.25rem",
-                fontFamily: "var(--font-mono)",
-                fontSize: "0.625rem",
-                color: "var(--color-danger)",
-              }}
+      <div className="flex flex-col gap-3 p-4 sm:gap-4">
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="field-label">Profundidad (m) *</label>
+            <input
+              ref={depthRef}
+              className={`field-input font-(--font-mono) text-2xl sm:text-[1.5rem] ${error.depth ? "field-input--error" : ""}`}
+              type="number"
+              placeholder="0.0"
+              inputMode="decimal"
+              step="0.1"
+              value={form.depth}
+              onChange={(event) => setField("depth", event.target.value)}
+              onKeyDown={handleKeyDown}
+            />
+            {error.depth && (
+              <p className="mt-1 font-(--font-mono) text-[0.625rem] text-(--color-danger)">
+                Profundidad requerida y mayor a 0
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="field-label">Barreno *</label>
+            <select
+              className={`field-input ${error.selectedHoleId ? "field-input--error" : ""}`}
+              value={form.selectedHoleId}
+              onChange={(event) =>
+                setField("selectedHoleId", event.target.value)
+              }
+              disabled={loadingHoles || !availableHoles.length}
             >
-              Profundidad requerida y mayor a 0
-            </p>
-          )}
+              <option value="">
+                {loadingHoles
+                  ? "Cargando barrenos..."
+                  : availableHoles.length
+                    ? "Seleccionar"
+                    : "Sin barrenos disponibles"}
+              </option>
+              {availableHoles.map((hole) => (
+                <option key={hole.id} value={hole.id}>
+                  B-{String(hole.holeNumber).padStart(2, "0")}
+                </option>
+              ))}
+            </select>
+            {error.selectedHoleId && (
+              <p className="mt-1 font-(--font-mono) text-[0.625rem] text-(--color-danger)">
+                Barreno requerido
+              </p>
+            )}
+          </div>
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: "0.75rem",
-          }}
-        >
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <label className="field-label">Techo (m)</label>
             <input
@@ -147,10 +166,11 @@ export default function HoleEntry({ nextHoleNumber, onSaved }) {
               inputMode="decimal"
               step="0.1"
               value={form.ceiling}
-              onChange={(e) => setField("ceiling", e.target.value)}
+              onChange={(event) => setField("ceiling", event.target.value)}
               onKeyDown={handleKeyDown}
             />
           </div>
+
           <div>
             <label className="field-label">Piso (m)</label>
             <input
@@ -161,7 +181,7 @@ export default function HoleEntry({ nextHoleNumber, onSaved }) {
               inputMode="decimal"
               step="0.1"
               value={form.floor}
-              onChange={(e) => setField("floor", e.target.value)}
+              onChange={(event) => setField("floor", event.target.value)}
               onKeyDown={handleKeyDown}
             />
           </div>
@@ -170,7 +190,7 @@ export default function HoleEntry({ nextHoleNumber, onSaved }) {
         <button
           className="btn-primary"
           onClick={handleSubmit}
-          disabled={saving || !isValid}
+          disabled={saving || loadingHoles || !isValid}
         >
           {saving ? "Guardando..." : "Guardar barreno"}
         </button>

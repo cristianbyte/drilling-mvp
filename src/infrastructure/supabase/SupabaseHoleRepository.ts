@@ -156,7 +156,9 @@ export class SupabaseHoleRepository implements IHoleRepository {
   }
 
   private mapDrillingToDb(
-    data: { operatorId: string } & Partial<Pick<HoleDrilling, "depth" | "ceiling" | "floor">>,
+    data: { operatorId: string } & Partial<
+      Pick<HoleDrilling, "depth" | "ceiling" | "floor">
+    >,
     updatedBy: string,
   ) {
     const mapped: Record<string, unknown> = {
@@ -219,7 +221,10 @@ export class SupabaseHoleRepository implements IHoleRepository {
     return mapped;
   }
 
-  async createHole(blastId: string, holeNumber: number): Promise<string | null> {
+  async createHole(
+    blastId: string,
+    holeNumber: number,
+  ): Promise<string | null> {
     const { data, error } = await supabase
       .from("holes")
       .insert([
@@ -266,9 +271,22 @@ export class SupabaseHoleRepository implements IHoleRepository {
     return (data ?? []).map((row) => this.mapHoleFromDb(row as DbHoleRow));
   }
 
+  async deleteDrilling(holeId: string): Promise<void> {
+    const { error } = await supabase
+      .from("hole_drilling")
+      .delete()
+      .eq("hole_id", holeId);
+
+    if (error) {
+      console.error("Error deleting drilling:", error);
+    }
+  }
+
   async upsertDrilling(
     holeId: string,
-    data: { operatorId: string } & Partial<Pick<HoleDrilling, "depth" | "ceiling" | "floor">>,
+    data: { operatorId: string } & Partial<
+      Pick<HoleDrilling, "depth" | "ceiling" | "floor">
+    >,
     updatedBy: string,
   ): Promise<void> {
     const { error } = await supabase.from("hole_drilling").upsert(

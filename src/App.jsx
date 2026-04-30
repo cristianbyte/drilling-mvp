@@ -10,28 +10,15 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route
-          path="/"
-          element={<LoginFake />}
-        />
-        <Route path="/operador" element={<OperatorForm />} />
-        <Route
-          path="/carga"
-          element={<CargaForm />}
-        />
+        <Route path="/" element={<LoginFake />} />
+        <Route path="/perforacion" element={<OperatorForm />} />
+        <Route path="/carga" element={<CargaForm />} />
         <Route
           path="/supervisor/perforacion"
           element={<SupervisorDashboard />}
         />
         <Route path="/supervisor/carga" element={<SupervisorCargaView />} />
-        <Route
-          path="/sup"
-          element={<Navigate to="/supervisor/perforacion" replace />}
-        />
-        <Route
-          path="*"
-          element={<NotFoundView />}
-        />
+        <Route path="*" element={<NotFoundView />} />
       </Routes>
     </BrowserRouter>
   );

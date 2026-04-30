@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import SupervisorHeader from "../components/SupervisorHeader";
 import SupervisorCargaDetail from "../components/SupervisorCargaDetail";
 import SupervisorCargaSidebar from "../components/SupervisorCargaSidebar";
 import { blastRepository } from "../di/container";
@@ -9,6 +10,7 @@ export default function SupervisorCargaView() {
   const [selectedBlastId, setSelectedBlastId] = useState("");
   const [selectedBlastFull, setSelectedBlastFull] = useState(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState(null);
 
   const selectedBlast = useMemo(
     () => blasts.find((blast) => blast.id === selectedBlastId) ?? null,
@@ -25,6 +27,7 @@ export default function SupervisorCargaView() {
 
         setBlasts(data);
         setSelectedBlastId((current) => current || data[0]?.id || "");
+        setLastUpdate(Date.now());
       })
       .catch((error) => {
         console.error("Error loading blasts for supervisor carga:", error);
@@ -52,9 +55,13 @@ export default function SupervisorCargaView() {
       .then((data) => {
         if (!mounted) return;
         setSelectedBlastFull(data);
+        setLastUpdate(Date.now());
       })
       .catch((error) => {
-        console.error("Error loading blast detail for supervisor carga:", error);
+        console.error(
+          "Error loading blast detail for supervisor carga:",
+          error,
+        );
       })
       .finally(() => {
         if (mounted) setLoadingDetail(false);
@@ -67,24 +74,17 @@ export default function SupervisorCargaView() {
 
   return (
     <main className="min-h-screen bg-(--color-surface-base) pb-8 text-(--color-text-primary)">
-      <header className="sticky top-0 z-10 border-b border-(--color-border-subtle) bg-(--color-surface-1)/95 px-4 py-3 backdrop-blur-md">
-        <div className="mx-auto flex w-full max-w-7xl items-center gap-2">
-          <span className="font-(--font-mono) text-[0.6875rem] uppercase tracking-[0.18em] text-(--color-text-muted)">
-            Supervisor
-          </span>
-          <span className="font-(--font-mono) text-(--color-border-strong)">
-            /
-          </span>
-          <span className="font-(--font-mono) text-[0.6875rem] uppercase tracking-[0.18em] text-(--color-brand-cyan)">
-            Carga
-          </span>
-          {selectedBlast && (
-            <span className="ml-auto font-(--font-mono) text-[0.625rem] uppercase tracking-[0.12em] text-(--color-text-muted)">
-              {selectedBlast.blastCode}
-            </span>
-          )}
-        </div>
-      </header>
+      <SupervisorHeader
+        accentClassName="text-(--color-brand-cyan)"
+        badgeText={selectedBlast?.blastCode || null}
+        detailLabel={
+          selectedBlast ? `Ubicacion: ${selectedBlast.location}` : null
+        }
+        hideExport
+        lastUpdate={lastUpdate}
+        subtitle="Panel de voladuras y detalle de carga"
+        title="Supervisor / Carga"
+      />
 
       <div className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-4 overflow-x-hidden px-2 py-3 sm:px-4 md:px-6 lg:grid-cols-[20rem_minmax(0,1fr)] [&_.section-card]:mx-0 [&_.section-card]:w-full [&_.section-card]:min-w-0">
         <SupervisorCargaSidebar

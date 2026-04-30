@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { blastRepository, holeRepository } from "../di/container";
 import { supabaseReady } from "../infrastructure/supabase/supabaseClient";
-import Card from "../components/Card";
 import ConfirmModal from "../components/ConfirmModal";
 import ExportDayModal from "../components/ExportDayModal";
 import KpiCard from "../components/KpiCard";
@@ -192,81 +191,90 @@ export default function SupervisorDashboard() {
   }, []);
 
   return (
-    <div
-      style={{
-        background: "var(--color-surface-base)",
-        minHeight: "100vh",
-        fontFamily: "var(--font-sans)",
-      }}
-    >
+    <main className="min-h-screen bg-(--color-surface-base) pb-8 text-(--color-text-primary)">
       <SupervisorHeader
+        accentClassName="text-(--color-brand-amber)"
         lastUpdate={lastUpdate}
-        selectedDate={selectedDate}
         onOpenExport={() => {
           setExportFeedback("");
           setIsExportModalOpen(true);
         }}
         exportDisabled={false}
+        selectedDate={selectedDate}
+        subtitle="Dashboard: ultimos 50 registros"
+        title="Supervisor / Perforacion"
       />
 
-      <div
-        style={{
-          padding: "20px 24px",
-          display: "flex",
-          flexDirection: "column",
-          gap: 20,
-        }}
-      >
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(4, 1fr)",
-            gap: 14,
-          }}
-        >
-          <KpiCard
-            label="Metros totales"
-            value={totalMetros.toFixed(1)}
-            sub="ultimos 50 registros"
-            color="var(--color-brand-amber)"
-          />
-          <KpiCard
-            label="Barrenos"
-            value={latest50Rows.length}
-            sub="ultimos 50 registros"
-            color="var(--color-brand-cyan)"
-          />
-          <KpiCard
-            label="Prof. promedio"
-            value={promMetros ? promMetros.toFixed(1) : "-"}
-            sub="metros por barreno"
-            color="var(--color-brand-emerald)"
-          />
-          <KpiCard
-            label="Operadores"
-            value={totalOps}
-            sub="en ultimos 50 registros"
-            color="var(--color-text-muted)"
-          />
-        </div>
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 overflow-x-hidden px-2 py-3 sm:px-4 md:px-6 [&_.section-card]:mx-0 [&_.section-card]:w-full [&_.section-card]:min-w-0">
+        <section className="section-card w-full min-w-0 overflow-hidden">
+          <div className="section-header">
+            <div className="dot bg-(--color-brand-amber)" />
+            <span className="section-title">Resumen</span>
+          </div>
 
-        <SupervisorStats
-          chartOpsData={chartOpsData}
-          chartTimeData={chartTimeData}
-          scopeLabel="ultimos 50 registros"
-        />
+          <div className="p-4 sm:p-5">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <KpiCard
+                label="Metros totales"
+                value={totalMetros.toFixed(1)}
+                sub="ultimos 50 registros"
+                color="var(--color-brand-amber)"
+              />
+              <KpiCard
+                label="Barrenos"
+                value={latest50Rows.length}
+                sub="ultimos 50 registros"
+                color="var(--color-brand-cyan)"
+              />
+              <KpiCard
+                label="Prof. promedio"
+                value={promMetros ? promMetros.toFixed(1) : "-"}
+                sub="metros por barreno"
+                color="var(--color-brand-emerald)"
+              />
+              <KpiCard
+                label="Operadores"
+                value={totalOps}
+                sub="en ultimos 50 registros"
+                color="var(--color-text-muted)"
+              />
+            </div>
+          </div>
+        </section>
 
-        <Card>
-          <SupervisorTable
-            tableRows={tableRows}
-            filtroTurno={filtroTurno}
-            setFiltroTurno={setFiltroTurno}
-            filtroOp={filtroOp}
-            setFiltroOp={setFiltroOp}
-            setDeleteTarget={setDeleteTarget}
-            fmtTime={(value) => formatTime(value, timeZone)}
-          />
-        </Card>
+        <section className="section-card w-full min-w-0 overflow-hidden">
+          <div className="section-header">
+            <div className="dot bg-(--color-brand-cyan)" />
+            <span className="section-title">Tendencias</span>
+          </div>
+
+          <div className="p-4 sm:p-5">
+            <SupervisorStats
+              chartOpsData={chartOpsData}
+              chartTimeData={chartTimeData}
+              scopeLabel="ultimos 50 registros"
+            />
+          </div>
+        </section>
+
+        <section className="section-card w-full min-w-0 overflow-hidden">
+          <div className="section-header">
+            <div className="dot bg-(--color-brand-emerald)" />
+            <span className="section-title">Registros</span>
+          </div>
+
+          <div className="p-4 sm:p-5">
+            <SupervisorTable
+              tableRows={tableRows}
+              filtroTurno={filtroTurno}
+              setFiltroTurno={setFiltroTurno}
+              filtroOp={filtroOp}
+              setFiltroOp={setFiltroOp}
+              setDeleteTarget={setDeleteTarget}
+              fmtTime={(value) => formatTime(value, timeZone)}
+            />
+          </div>
+        </section>
       </div>
 
       {deleteTarget?.holeId && (
@@ -298,6 +306,6 @@ export default function SupervisorDashboard() {
           feedback={exportFeedback}
         />
       )}
-    </div>
+    </main>
   );
 }

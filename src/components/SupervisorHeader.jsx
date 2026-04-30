@@ -22,100 +22,77 @@ function ExportExcelIcon() {
 }
 
 export default function SupervisorHeader({
+  accentClassName = "text-(--color-brand-amber)",
+  badgeText = null,
+  detailLabel = null,
+  exportLabel = null,
+  hideExport = false,
   lastUpdate,
-  selectedDate,
   onOpenExport,
+  selectedDate,
+  subtitle = "Dashboard: ultimos 50 registros",
+  title = "Supervisor / Perforacion",
   exportDisabled = false,
 }) {
   return (
-    <header
-      style={{
-        background: "var(--color-surface-1)",
-        borderBottom: "1px solid var(--color-border-default)",
-        padding: "14px 24px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          color: "var(--color-text-faint)",
-          gap: 0,
-        }}
-      >
-        <div
-          style={{
-            fontFamily: "var(--font-mono)",
-            fontSize: 13,
-            color: "var(--color-brand-amber)",
-            letterSpacing: "0.08em",
-            textTransform: "uppercase",
-          }}
-        >
-          Supervisor · Perforacion
-        </div>
-        <div
-          style={{
-            fontFamily: "var(--font-mono)",
-            fontSize: 8,
-            color: "var(--color-text-faint)",
-            letterSpacing: "0.08em",
-            textTransform: "uppercase",
-          }}
-        >
-          Dashboard: ultimos 50 registros
-        </div>
-        <div
-          style={{
-            fontFamily: "var(--font-mono)",
-            fontSize: 8,
-            color: "var(--color-text-faint)",
-            letterSpacing: "0.05em",
-            textTransform: "uppercase",
-          }}
-        >
-          Exportacion: fecha {selectedDate}
-        </div>
-      </div>
-
-      <div className="flex items-center gap-5">
-        <div className="flex items-center gap-1 flex-col text-xs">
-          <LiveBadge />
-          <div className="font-font-mono text-[0.6rem] text-(--color-text-faint) font-semibold">
-            {lastUpdate
-              ? `Act. ${formatTime(lastUpdate, "America/Bogota", "es-CO", { second: "2-digit" })}`
-              : "-"}
-          </div>
-        </div>
-
-        <div className="exportExcel">
-          <button
-            type="button"
-            onClick={onOpenExport}
-            disabled={exportDisabled}
-            title={
-              exportDisabled ? "No hay fechas disponibles" : "Exportar a Excel"
-            }
-            style={{
-              background: "transparent",
-              border: `2px solid ${exportDisabled ? "var(--color-border-default)" : "var(--color-brand-emerald)"}`,
-              color: exportDisabled
-                ? "var(--color-text-faint)"
-                : "var(--color-brand-emerald)",
-              borderRadius: "var(--radius-btn)",
-              padding: "0.35rem",
-              cursor: exportDisabled ? "not-allowed" : "pointer",
-              transition: "all 0.15s ease",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
+    <header className="sticky top-0 z-10 border-b border-(--color-border-default) bg-(--color-surface-1)/95 px-4 py-3 backdrop-blur-md sm:px-6">
+      <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4">
+        <div className="flex min-w-0 flex-col">
+          <div
+            className={`font-(--font-mono) text-[0.8125rem] uppercase tracking-[0.08em] ${accentClassName}`}
           >
-            <ExportExcelIcon />
-          </button>
+            {title}
+          </div>
+          <div className="font-(--font-mono) text-[0.5rem] uppercase tracking-[0.08em] text-(--color-text-faint)">
+            {subtitle}
+          </div>
+          {(exportLabel || selectedDate) && (
+            <div className="font-(--font-mono) text-[0.5rem] uppercase tracking-[0.05em] text-(--color-text-faint)">
+              {exportLabel || `Exportacion: fecha ${selectedDate}`}
+            </div>
+          )}
+          {detailLabel && (
+            <div className="font-(--font-mono) text-[0.5rem] uppercase tracking-[0.05em] text-(--color-text-faint)">
+              {detailLabel}
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center gap-5">
+          <div className="flex flex-col items-center gap-1 text-xs">
+            <LiveBadge />
+            <div className="font-(--font-mono) text-[0.6rem] font-semibold text-(--color-text-faint)">
+              {lastUpdate
+                ? `Act. ${formatTime(lastUpdate, "America/Bogota", "es-CO", { second: "2-digit" })}`
+                : "-"}
+            </div>
+          </div>
+
+          {badgeText && (
+            <div className="rounded-full border border-(--color-border-subtle) bg-(--color-surface-base) px-3 py-2 font-(--font-mono) text-[0.625rem] uppercase tracking-[0.12em] text-(--color-text-muted)">
+              {badgeText}
+            </div>
+          )}
+
+          {!hideExport && (
+            <div className="exportExcel">
+              <button
+                type="button"
+                onClick={onOpenExport}
+                disabled={exportDisabled}
+                title={
+                  exportDisabled ? "No hay fechas disponibles" : "Exportar a Excel"
+                }
+                className={`flex items-center justify-center rounded-(--radius-btn) border-2 p-[0.35rem] transition-all ${
+                  exportDisabled
+                    ? "cursor-not-allowed border-(--color-border-default) text-(--color-text-faint)"
+                    : "cursor-pointer border-(--color-brand-emerald) text-(--color-brand-emerald)"
+                }`}
+              >
+                <ExportExcelIcon />
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </header>

@@ -18,8 +18,8 @@ import {
 import ShiftHeader from "../components/ShiftHeader";
 import HoleEntry from "../components/HoleEntry";
 
-function buildSnapshot(shift, holes) {
-  return { shift, holes, savedAt: Date.now() };
+function buildSnapshot(shift, holes, blastHolesCatalog) {
+  return { shift, holes, blastHolesCatalog, savedAt: Date.now() };
 }
 
 function isSyncedValue(value) {
@@ -66,6 +66,8 @@ function buildDrillingPayload(holeData, operatorId) {
 export default function OperatorForm() {
   const [shift, setShift] = useState(null);
   const [holes, setHoles] = useState([]);
+  const [blastHolesCatalog, setBlastHolesCatalog] = useState([]);
+  const [loadingBlastHoles, setLoadingBlastHoles] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [headerKey, setHeaderKey] = useState(0);
   const [isOnline, setIsOnline] = useState(() => window.navigator.onLine);
@@ -145,45 +147,25 @@ export default function OperatorForm() {
               syncedShiftData.get(holeData.shiftId) ||
               (shift?.shiftId === holeData.shiftId ? shift : null);
             const operatorId = holeData.operatorId || baseShiftData?.operatorId;
-            const blastId = holeData.blastId || baseShiftData?.blastId;
 
-            if (!operatorId || !blastId) {
+            if (!operatorId || !holeData.holeId) {
               await markRecordPending(
                 record.id,
-                "Falta operador o voladura para sincronizar barreno",
-              );
-              pendingHoleIds.add(record.id);
-              continue;
-            }
-
-            let remoteHoleId = holeData.remoteHoleId;
-            if (!remoteHoleId) {
-              remoteHoleId = await holeRepository.createHole(
-                blastId,
-                holeData.holeNumber,
-              );
-            }
-
-            if (!remoteHoleId) {
-              await markRecordPending(
-                record.id,
-                "Supabase no confirmo barreno",
+                "Falta operador o barreno para sincronizar barreno",
               );
               pendingHoleIds.add(record.id);
               continue;
             }
 
             await holeRepository.upsertDrilling(
-              remoteHoleId,
+              holeData.holeId,
               buildDrillingPayload(holeData, operatorId),
               holeData.updatedBy || baseShiftData?.operatorName || "Operador",
             );
 
             const nextHoleData = {
               ...holeData,
-              blastId,
               operatorId,
-              remoteHoleId,
               synced: true,
             };
 
@@ -268,6 +250,11 @@ export default function OperatorForm() {
         if (!active || !snapshot) return;
         setShift(snapshot.shift || null);
         setHoles(Array.isArray(snapshot.holes) ? snapshot.holes : []);
+        setBlastHolesCatalog(
+          Array.isArray(snapshot.blastHolesCatalog)
+            ? snapshot.blastHolesCatalog
+            : [],
+        );
       })
       .catch(() => {
         // Offline restore failed
@@ -309,10 +296,43 @@ export default function OperatorForm() {
       return;
     }
 
-    saveOperatorSnapshot(buildSnapshot(shift, holes)).catch(() => {
+    saveOperatorSnapshot(buildSnapshot(shift, holes, blastHolesCatalog)).catch(() => {
       // Offline save failed
     });
-  }, [shift, holes, hydrated]);
+  }, [shift, holes, blastHolesCatalog, hydrated]);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadBlastHoles() {
+      if (!shift?.blastId) {
+        setBlastHolesCatalog([]);
+        return;
+      }
+
+      setLoadingBlastHoles(true);
+      try {
+        const data = await holeRepository.fetchHolesByBlast(shift.blastId);
+        if (!active) return;
+        setBlastHolesCatalog(data);
+      } catch (error) {
+        console.error("Error loading holes by blast:", error);
+        if (active) {
+          setBlastHolesCatalog([]);
+        }
+      } finally {
+        if (active) {
+          setLoadingBlastHoles(false);
+        }
+      }
+    }
+
+    loadBlastHoles();
+
+    return () => {
+      active = false;
+    };
+  }, [shift?.blastId]);
 
   const pendingSyncCount =
     (shift && !isSyncedValue(shift.synced) ? 1 : 0) +
@@ -329,7 +349,15 @@ export default function OperatorForm() {
   }, [hydrated, isOnline, pendingSyncCount, syncPendingRecords]);
 
   const totalMeters = holes.reduce((sum, hole) => sum + hole.depth, 0);
-  const nextHoleNumber = holes.length + 1;
+  const availableHoles = blastHolesCatalog.filter((hole) => {
+    if (hole.drilling) {
+      return false;
+    }
+
+    return !holes.some(
+      (localHole) => (localHole.remoteHoleId || localHole.holeId) === hole.id,
+    );
+  });
 
   async function handleShiftFrozen(shiftData) {
     const localShift = {
@@ -353,7 +381,7 @@ export default function OperatorForm() {
       date: shift.date,
       shiftId: shift.shiftId,
       operatorId: shift.operatorId || null,
-      remoteHoleId: null,
+      remoteHoleId: hole.holeId,
       synced: false,
     };
     setHoles((prev) => [...prev, localHole]);
@@ -369,11 +397,13 @@ export default function OperatorForm() {
       await deleteRecord(holeId);
       if (
         isSyncedValue(targetHole?.synced) &&
-        targetHole?.remoteHoleId &&
+        (targetHole?.remoteHoleId || targetHole?.holeId) &&
         window.navigator.onLine &&
         supabaseReady
       ) {
-        await holeRepository.deleteHole(targetHole.remoteHoleId);
+        await holeRepository.deleteDrilling(
+          targetHole.remoteHoleId || targetHole.holeId,
+        );
       }
     } catch {
       // Delete failed
@@ -467,7 +497,8 @@ export default function OperatorForm() {
         {shift && (
           <div className="w-full">
             <HoleEntry
-              nextHoleNumber={nextHoleNumber}
+              availableHoles={availableHoles}
+              loadingHoles={loadingBlastHoles}
               onSaved={handleHoleSaved}
             />
             <HoleLog
