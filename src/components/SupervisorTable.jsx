@@ -1,4 +1,5 @@
 import Tag from "./Tag";
+import { formatTime } from "../lib/dateTime";
 
 function FilterBtn({ label, active, onClick }) {
   return (
@@ -23,25 +24,104 @@ function FilterBtn({ label, active, onClick }) {
   );
 }
 
+function DepthDifferenceBadge({ plannedDepth, depth }) {
+  if (
+    plannedDepth === null ||
+    plannedDepth === undefined ||
+    depth === null ||
+    depth === undefined
+  ) {
+    return (
+      <span
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          minWidth: 88,
+          padding: "6px 8px",
+          borderRadius: 8,
+          border: "1px solid var(--color-border-default)",
+          color: "var(--color-text-muted)",
+          fontFamily: "var(--font-mono)",
+          fontSize: 11,
+        }}
+      >
+        -
+      </span>
+    );
+  }
+
+  const planned = Number(plannedDepth);
+  const actual = Number(depth);
+
+  if (Number.isNaN(planned) || Number.isNaN(actual)) {
+    return null;
+  }
+
+  const delta = actual - planned;
+  const percent = planned === 0 ? 0 : (delta / planned) * 100;
+  const isEqual = delta === 0;
+  const isShort = delta < 0;
+
+  let background = "var(--color-brand-emerald-dim)";
+  let border = "var(--color-brand-emerald)";
+  let color = "var(--color-brand-emerald)";
+
+  if (isShort) {
+    background = "color-mix(in srgb, var(--color-danger) 18%, transparent)";
+    border = "var(--color-danger)";
+    color = "var(--color-danger)";
+  } else if (!isEqual) {
+    background = "var(--color-brand-amber-dim)";
+    border = "var(--color-brand-amber)";
+    color = "var(--color-brand-amber)";
+  }
+
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        minWidth: 88,
+        padding: "6px 8px",
+        borderRadius: 8,
+        border: `1px solid ${border}`,
+        background,
+        color,
+        fontFamily: "var(--font-mono)",
+        fontSize: 11,
+        whiteSpace: "nowrap",
+      }}
+    >
+      {`${percent >= 0 ? "+" : ""}${percent.toFixed(1)}% / ${delta >= 0 ? "+" : ""}${delta.toFixed(1)}`}
+    </span>
+  );
+}
+
 export default function SupervisorTable({
   tableRows = [],
   filtroTurno,
   setFiltroTurno,
   filtroOp,
   setFiltroOp,
-  setDeleteTarget,
-  fmtTime,
+  fmtDateTime,
 }) {
   const headers = [
     "Barreno",
-    "Ubicacion",
     "Operador",
     "Equipo",
-    "Voladura",
-    "Prof.",
     "Turno",
-    "Hora",
-    "",
+    "Patron",
+    "Prof. D.",
+    "Prof.",
+    "Diferencia",
+    "Techo",
+    "Piso",
+    "Creado",
+    "Actualizado",
+    "Recencia",
+    "Actualizado por",
   ];
 
   return (
@@ -65,7 +145,7 @@ export default function SupervisorTable({
             color: "var(--color-text-muted)",
           }}
         >
-          Ultimos registros (max 50)
+          Ultimos 50 registros + tiempo real
         </span>
 
         <div
@@ -153,7 +233,7 @@ export default function SupervisorTable({
           ) : (
             tableRows.map((row, index) => (
               <tr
-                key={row.holeId || `row-${index}`}
+                key={row.drillingId || row.holeId || `row-${index}`}
                 style={{
                   borderBottom: "1px solid var(--color-border-subtle)",
                   background:
@@ -171,18 +251,7 @@ export default function SupervisorTable({
                     whiteSpace: "nowrap",
                   }}
                 >
-                  B-{String(row.holeNumber || 0).padStart(2, "0")}
-                </td>
-                <td
-                  style={{
-                    padding: "10px 12px",
-                    color: "var(--color-text-primary)",
-                    fontFamily: "var(--font-mono)",
-                    fontSize: 12,
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {row.location || "-"}
+                  {String(row.holeNumber || 0).padStart(2, "0")}
                 </td>
                 <td
                   style={{
@@ -210,19 +279,6 @@ export default function SupervisorTable({
                     fontSize: 12,
                   }}
                 >
-                  {row.blastCode || row.blastId || "-"}
-                </td>
-                <td
-                  style={{
-                    padding: "10px 12px",
-                    fontFamily: "var(--font-mono)",
-                    color: "var(--color-brand-cyan)",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {Number(row.depth || 0).toFixed(1)} m
-                </td>
-                <td style={{ padding: "10px 12px" }}>
                   <Tag turno={row.shift || "-"} />
                 </td>
                 <td
@@ -234,33 +290,105 @@ export default function SupervisorTable({
                     whiteSpace: "nowrap",
                   }}
                 >
-                  {fmtTime(row.createdAt)}
+                  {row.pattern || "-"}
                 </td>
-                <td style={{ padding: "10px 12px" }}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDeleteTarget({
-                        holeId: row.holeId,
-                        holeNumber: row.holeNumber,
-                        operatorName: row.operatorName,
-                      });
-                    }}
-                    style={{
-                      background: "transparent",
-                      border: "1px solid var(--color-danger)",
-                      borderRadius: "var(--radius-btn)",
-                      color: "var(--color-danger)",
-                      fontFamily: "var(--font-mono)",
-                      fontSize: 10,
-                      padding: "4px 10px",
-                      cursor: "pointer",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.05em",
-                    }}
-                  >
-                    Eliminar
-                  </button>
+                <td
+                  style={{
+                    padding: "10px 12px",
+                    fontFamily: "var(--font-mono)",
+                    color: "var(--color-text-muted)",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {row.plannedDepth === null || row.plannedDepth === undefined
+                    ? "-"
+                    : `${Number(row.plannedDepth).toFixed(1)} m`}
+                </td>
+                <td
+                  style={{
+                    padding: "10px 12px",
+                    fontFamily: "var(--font-mono)",
+                    color: "var(--color-brand-cyan)",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {row.depth === null || row.depth === undefined
+                    ? "-"
+                    : `${Number(row.depth).toFixed(1)} m`}
+                </td>
+                <td style={{ padding: "10px 12px", whiteSpace: "nowrap" }}>
+                  <DepthDifferenceBadge
+                    plannedDepth={row.plannedDepth}
+                    depth={row.depth}
+                  />
+                </td>
+                <td
+                  style={{
+                    padding: "10px 12px",
+                    fontFamily: "var(--font-mono)",
+                    color: "var(--color-text-muted)",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {row.ceiling === null || row.ceiling === undefined
+                    ? "-"
+                    : `${Number(row.ceiling).toFixed(1)} m`}
+                </td>
+                <td
+                  style={{
+                    padding: "10px 12px",
+                    fontFamily: "var(--font-mono)",
+                    color: "var(--color-text-muted)",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {row.floor === null || row.floor === undefined
+                    ? "-"
+                    : `${Number(row.floor).toFixed(1)} m`}
+                </td>
+                <td
+                  style={{
+                    padding: "10px 12px",
+                    color: "var(--color-text-muted)",
+                    fontFamily: "var(--font-mono)",
+                    fontSize: 12,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {formatTime(row.createdAt)}
+                </td>
+                <td
+                  style={{
+                    padding: "10px 12px",
+                    color: "var(--color-text-muted)",
+                    fontFamily: "var(--font-mono)",
+                    fontSize: 12,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {formatTime(row.updatedAt)}
+                </td>
+                <td
+                  style={{
+                    padding: "10px 12px",
+                    color: "var(--color-text-muted)",
+                    fontFamily: "var(--font-mono)",
+                    fontSize: 12,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {fmtDateTime(row.recency)}
+                </td>
+                <td
+                  style={{
+                    padding: "10px 12px",
+                    color: "var(--color-text-muted)",
+                    fontFamily: "var(--font-mono)",
+                    fontSize: 12,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {row.updatedBy || "-"}
                 </td>
               </tr>
             ))

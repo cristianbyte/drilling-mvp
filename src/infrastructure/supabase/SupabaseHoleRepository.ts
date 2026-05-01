@@ -289,13 +289,31 @@ export class SupabaseHoleRepository implements IHoleRepository {
     >,
     updatedBy: string,
   ): Promise<void> {
-    const { error } = await supabase.from("hole_drilling").upsert(
-      {
-        hole_id: holeId,
-        ...this.mapDrillingToDb(data, updatedBy),
-      },
-      { onConflict: "hole_id" },
-    );
+    const { data: existingRow, error: fetchError } = await supabase
+      .from("hole_drilling")
+      .select("id")
+      .eq("hole_id", holeId)
+      .maybeSingle();
+
+    if (fetchError) {
+      console.error("Error checking drilling before save:", fetchError);
+      return;
+    }
+
+    const payload = {
+      hole_id: holeId,
+      ...this.mapDrillingToDb(data, updatedBy),
+    };
+
+    const { error } = existingRow
+      ? await supabase
+          .from("hole_drilling")
+          .update(payload)
+          .eq("hole_id", holeId)
+      : await supabase.from("hole_drilling").insert({
+          ...payload,
+          updated_by: null,
+        });
 
     if (error) {
       console.error("Error upserting drilling:", error);
@@ -312,13 +330,31 @@ export class SupabaseHoleRepository implements IHoleRepository {
     >,
     updatedBy: string,
   ): Promise<void> {
-    const { error } = await supabase.from("hole_loading").upsert(
-      {
-        hole_id: holeId,
-        ...this.mapLoadingToDb(data, updatedBy),
-      },
-      { onConflict: "hole_id" },
-    );
+    const { data: existingRow, error: fetchError } = await supabase
+      .from("hole_loading")
+      .select("id")
+      .eq("hole_id", holeId)
+      .maybeSingle();
+
+    if (fetchError) {
+      console.error("Error checking loading before save:", fetchError);
+      return;
+    }
+
+    const payload = {
+      hole_id: holeId,
+      ...this.mapLoadingToDb(data, updatedBy),
+    };
+
+    const { error } = existingRow
+      ? await supabase
+          .from("hole_loading")
+          .update(payload)
+          .eq("hole_id", holeId)
+      : await supabase.from("hole_loading").insert({
+          ...payload,
+          updated_by: null,
+        });
 
     if (error) {
       console.error("Error upserting loading:", error);
