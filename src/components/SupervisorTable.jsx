@@ -1,5 +1,5 @@
 import Tag from "./Tag";
-import { formatTime } from "../lib/dateTime";
+import { formatTime } from "../lib/datetime";
 
 function FilterBtn({ label, active, onClick }) {
   return (
