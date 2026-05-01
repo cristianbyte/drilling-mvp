@@ -239,6 +239,42 @@ export class SupabaseBlastRepository implements IBlastRepository {
     return result?.id ?? null;
   }
 
+  async findOrCreateBlast(
+    data: Omit<
+      Blast,
+      | "id"
+      | "createdAt"
+      | "updatedAt"
+      | "updatedBy"
+      | "isComplete"
+      | "completedAt"
+      | "densityComplete"
+      | "sample1"
+      | "sample2"
+      | "sample3"
+      | "sample4"
+      | "finalWeight"
+    >,
+  ): Promise<string | null> {
+    const { data: existing, error } = await supabase
+      .from("blasts")
+      .select("id")
+      .eq("blast_code", data.blastCode)
+      .eq("location", data.location)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Error finding blast:", error);
+      return null;
+    }
+
+    if (existing?.id) {
+      return existing.id;
+    }
+
+    return this.createBlast(data);
+  }
+
   async fetchBlastById(id: string): Promise<Blast | null> {
     const { data, error } = await supabase
       .from("blasts")

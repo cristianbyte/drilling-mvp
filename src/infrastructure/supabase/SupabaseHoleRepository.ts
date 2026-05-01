@@ -43,7 +43,7 @@ type DbHoleDrillingRow = {
 type DbHoleLoadingRow = {
   id: string;
   hole_id: string;
-  leader_id: string;
+  leader_id: string | null;
   planned_depth: number | null;
   planned_emulsion: number | null;
   planned_stemming_initial: number | null;
@@ -180,7 +180,7 @@ export class SupabaseHoleRepository implements IHoleRepository {
   }
 
   private mapLoadingToDb(
-    data: { leaderId: string } & Partial<
+    data: { leaderId?: string | null } & Partial<
       Omit<
         HoleLoading,
         "id" | "holeId" | "leaderId" | "createdAt" | "updatedAt" | "updatedBy"
@@ -189,9 +189,12 @@ export class SupabaseHoleRepository implements IHoleRepository {
     updatedBy: string,
   ) {
     const mapped: Record<string, unknown> = {
-      leader_id: data.leaderId,
       updated_by: updatedBy,
     };
+
+    if (data.leaderId !== undefined) {
+      mapped.leader_id = data.leaderId;
+    }
 
     if (data.plannedDepth !== undefined) {
       mapped.planned_depth = data.plannedDepth;
@@ -271,6 +274,33 @@ export class SupabaseHoleRepository implements IHoleRepository {
     return (data ?? []).map((row) => this.mapHoleFromDb(row as DbHoleRow));
   }
 
+  async upsertHoles(
+    blastId: string,
+    holeNumbers: number[],
+  ): Promise<Array<{ id: string; holeNumber: number }>> {
+    const uniqueHoleNumbers = [...new Set(holeNumbers)];
+    const { data, error } = await supabase
+      .from("holes")
+      .upsert(
+        uniqueHoleNumbers.map((holeNumber) => ({
+          blast_id: blastId,
+          hole_number: holeNumber,
+        })),
+        { onConflict: "blast_id,hole_number" },
+      )
+      .select("id, hole_number");
+
+    if (error) {
+      console.error("Error upserting holes:", error);
+      throw error;
+    }
+
+    return (data ?? []).map((row) => ({
+      id: row.id,
+      holeNumber: row.hole_number,
+    }));
+  }
+
   async deleteDrilling(holeId: string): Promise<void> {
     const { error } = await supabase
       .from("hole_drilling")
@@ -322,7 +352,7 @@ export class SupabaseHoleRepository implements IHoleRepository {
 
   async upsertLoading(
     holeId: string,
-    data: { leaderId: string } & Partial<
+    data: { leaderId?: string | null } & Partial<
       Omit<
         HoleLoading,
         "id" | "holeId" | "leaderId" | "createdAt" | "updatedAt" | "updatedBy"
@@ -338,7 +368,7 @@ export class SupabaseHoleRepository implements IHoleRepository {
 
     if (fetchError) {
       console.error("Error checking loading before save:", fetchError);
-      return;
+      throw fetchError;
     }
 
     const payload = {
@@ -358,6 +388,34 @@ export class SupabaseHoleRepository implements IHoleRepository {
 
     if (error) {
       console.error("Error upserting loading:", error);
+      throw error;
+    }
+  }
+
+  async upsertLoadingPlan(
+    rows: Array<
+      {
+        holeId: string;
+      } & Partial<
+        Omit<
+          HoleLoading,
+          "id" | "holeId" | "leaderId" | "createdAt" | "updatedAt" | "updatedBy"
+        >
+      >
+    >,
+    updatedBy: string,
+  ): Promise<void> {
+    for (const row of rows) {
+      await this.upsertLoading(
+        row.holeId,
+        {
+          plannedDepth: row.plannedDepth,
+          plannedEmulsion: row.plannedEmulsion,
+          plannedStemmingInitial: row.plannedStemmingInitial,
+          plannedStemmingFinal: row.plannedStemmingFinal,
+        },
+        updatedBy,
+      );
     }
   }
 

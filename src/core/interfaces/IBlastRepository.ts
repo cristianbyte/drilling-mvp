@@ -18,6 +18,23 @@ export interface IBlastRepository {
       | "finalWeight"
     >,
   ): Promise<string | null>;
+  findOrCreateBlast(
+    data: Omit<
+      Blast,
+      | "id"
+      | "createdAt"
+      | "updatedAt"
+      | "updatedBy"
+      | "isComplete"
+      | "completedAt"
+      | "densityComplete"
+      | "sample1"
+      | "sample2"
+      | "sample3"
+      | "sample4"
+      | "finalWeight"
+    >,
+  ): Promise<string | null>;
   fetchAllBlasts(): Promise<Blast[]>;
   fetchBlastById(id: string): Promise<Blast | null>;
   fetchCargaHeaderData(): Promise<{ leaders: Leader[]; blasts: Blast[] }>;

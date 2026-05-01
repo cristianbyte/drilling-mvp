@@ -7,6 +7,7 @@ import { SubscriptionManager } from "../infrastructure/supabase/SubscriptionMana
 import ExportDayModal from "../components/ExportDayModal";
 import KpiCard from "../components/KpiCard";
 import SupervisorHeader from "../components/SupervisorHeader";
+import SupervisorExportAction from "../components/SupervisorExportAction";
 import SupervisorStats from "../components/SupervisorStats";
 import SupervisorTable from "../components/SupervisorTable";
 import {
@@ -218,12 +219,16 @@ export default function SupervisorDashboard() {
     <main className="min-h-screen bg-(--color-surface-base) pb-8 text-(--color-text-primary)">
       <SupervisorHeader
         accentClassName="text-(--color-brand-amber)"
+        action={
+          <SupervisorExportAction
+            onClick={() => {
+              setExportFeedback("");
+              setIsExportModalOpen(true);
+            }}
+            disabled={false}
+          />
+        }
         lastUpdate={lastUpdate}
-        onOpenExport={() => {
-          setExportFeedback("");
-          setIsExportModalOpen(true);
-        }}
-        exportDisabled={false}
         selectedDate={selectedDate}
         subtitle="Dashboard: ultimos 50 registros"
         title="Supervisor / Perforacion"

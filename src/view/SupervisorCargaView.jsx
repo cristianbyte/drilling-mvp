@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
+import SupervisorCargaExcelAction from "../components/SupervisorCargaExcelAction";
+import SupervisorCargaExcelModal from "../components/SupervisorCargaExcelModal";
 import SupervisorHeader from "../components/SupervisorHeader";
 import SupervisorCargaDetail from "../components/SupervisorCargaDetail";
 import SupervisorCargaSidebar from "../components/SupervisorCargaSidebar";
 import { blastRepository } from "../di/container";
 
 export default function SupervisorCargaView() {
+  const [excelModalOpen, setExcelModalOpen] = useState(false);
   const [blasts, setBlasts] = useState([]);
   const [loadingBlasts, setLoadingBlasts] = useState(true);
   const [selectedBlastId, setSelectedBlastId] = useState("");
@@ -73,32 +76,42 @@ export default function SupervisorCargaView() {
   }, [selectedBlastId]);
 
   return (
-    <main className="min-h-screen bg-(--color-surface-base) pb-8 text-(--color-text-primary)">
-      <SupervisorHeader
-        accentClassName="text-(--color-brand-cyan)"
-        badgeText={selectedBlast?.blastCode || null}
-        detailLabel={
-          selectedBlast ? `Ubicacion: ${selectedBlast.location}` : null
-        }
-        hideExport
-        lastUpdate={lastUpdate}
-        subtitle="Panel de voladuras y detalle de carga"
-        title="Supervisor / Carga"
-      />
-
-      <div className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-4 overflow-x-hidden px-2 py-3 sm:px-4 md:px-6 lg:grid-cols-[20rem_minmax(0,1fr)] [&_.section-card]:mx-0 [&_.section-card]:w-full [&_.section-card]:min-w-0">
-        <SupervisorCargaSidebar
-          blasts={blasts}
-          loading={loadingBlasts}
-          onSelectBlast={setSelectedBlastId}
-          selectedBlastId={selectedBlastId}
+    <>
+      <main className="min-h-screen bg-(--color-surface-base) pb-8 text-(--color-text-primary)">
+        <SupervisorHeader
+          accentClassName="text-(--color-brand-cyan)"
+          action={
+            <SupervisorCargaExcelAction
+              onClick={() => setExcelModalOpen(true)}
+            />
+          }
+          badgeText={selectedBlast?.blastCode || null}
+          detailLabel={
+            selectedBlast ? `Ubicacion: ${selectedBlast.location}` : null
+          }
+          lastUpdate={lastUpdate}
+          subtitle="Panel de voladuras y detalle de carga"
+          title="Supervisor / Carga"
         />
 
-        <SupervisorCargaDetail
-          blastFull={selectedBlastFull}
-          loading={loadingDetail}
-        />
-      </div>
-    </main>
+        <div className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-4 overflow-x-hidden px-2 py-3 sm:px-4 md:px-6 lg:grid-cols-[20rem_minmax(0,1fr)] [&_.section-card]:mx-0 [&_.section-card]:w-full [&_.section-card]:min-w-0">
+          <SupervisorCargaSidebar
+            blasts={blasts}
+            loading={loadingBlasts}
+            onSelectBlast={setSelectedBlastId}
+            selectedBlastId={selectedBlastId}
+          />
+
+          <SupervisorCargaDetail
+            blastFull={selectedBlastFull}
+            loading={loadingDetail}
+          />
+        </div>
+      </main>
+
+      {excelModalOpen ? (
+        <SupervisorCargaExcelModal onClose={() => setExcelModalOpen(false)} />
+      ) : null}
+    </>
   );
 }

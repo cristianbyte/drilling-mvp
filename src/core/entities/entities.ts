@@ -71,7 +71,7 @@ export interface HoleDrilling {
 export interface HoleLoading {
   id: string;
   holeId: string; // FK → holes.id (UNIQUE)
-  leaderId: string; // FK → leaders.id
+  leaderId: string | null; // FK → leaders.id
   plannedDepth: number | null;
   plannedEmulsion: number | null;
   plannedStemmingInitial: number | null;

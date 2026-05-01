@@ -100,9 +100,6 @@
     color: var(--color-text-faint);
   }
 
-  .field-input::select {
-    height: 5rem;
-  }
   .field-input:focus {
     border-color: var(--color-brand-amber);
     border-width: 2px;
