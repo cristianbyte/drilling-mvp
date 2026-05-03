@@ -2,10 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import CargaHolesSection from "../components/CargaHolesSection";
 import CargaLeaderSection from "../components/CargaLeaderSection";
 import LoadHoleModal from "../components/LoadHoleModal";
+import Toast, { showToast, useToast } from "../components/Toast";
 import { blastRepository, holeRepository } from "../di/container";
 import { supabaseReady } from "../infrastructure/supabase/supabaseClient";
 import { createClientId } from "../lib/ids";
 import {
+  clearLocalViewState,
   clearCargaSnapshot,
   getPendingRecordsByKinds,
   loadCargaSnapshot,
@@ -108,6 +110,7 @@ export default function CargaForm() {
   const [holeDrafts, setHoleDrafts] = useState({});
   const [activeHoleId, setActiveHoleId] = useState(null);
   const syncingRef = useRef(false);
+  const toastState = useToast();
 
   const selectedLeader = useMemo(
     () => leaders.find((leader) => leader.id === leaderId) ?? null,
@@ -142,7 +145,9 @@ export default function CargaForm() {
         setLeaderId(snapshot.leaderId || "");
         setBlastId(snapshot.blastId || "");
         setStartedContext(snapshot.startedContext || null);
-        setBlastHoles(Array.isArray(snapshot.blastHoles) ? snapshot.blastHoles : []);
+        setBlastHoles(
+          Array.isArray(snapshot.blastHoles) ? snapshot.blastHoles : [],
+        );
         setHoleDrafts(snapshot.holeDrafts || {});
       })
       .catch(() => {
@@ -381,7 +386,11 @@ export default function CargaForm() {
       setHoleDrafts(nextDrafts);
 
       await saveRecord(
-        createPendingRecord(nextContext.contextId, "carga-context", nextContext),
+        createPendingRecord(
+          nextContext.contextId,
+          "carga-context",
+          nextContext,
+        ),
       );
     } catch (error) {
       console.error("Error loading blast holes for carga:", error);
@@ -390,7 +399,11 @@ export default function CargaForm() {
       setBlastHoles([]);
       setHoleDrafts({});
       await saveRecord(
-        createPendingRecord(nextContext.contextId, "carga-context", nextContext),
+        createPendingRecord(
+          nextContext.contextId,
+          "carga-context",
+          nextContext,
+        ),
       );
     } finally {
       setStartingTurn(false);
@@ -431,19 +444,78 @@ export default function CargaForm() {
     );
   }
 
+  async function handleReset() {
+    const hasLocalData =
+      Boolean(startedContext) ||
+      Boolean(leaderId) ||
+      Boolean(blastId) ||
+      blastHoles.length > 0 ||
+      Object.keys(holeDrafts).length > 0;
+
+    if (
+      hasLocalData &&
+      !window.confirm(
+        "Verifica que tus cambios estén sincronizados. Esta accion no se puede deshacer.",
+      )
+    ) {
+      return;
+    }
+
+    setLeaderId("");
+    setBlastId("");
+    setStartedContext(null);
+    setBlastHoles([]);
+    setHoleDrafts({});
+    setActiveHoleId(null);
+
+    try {
+      await clearLocalViewState("carga");
+      showToast("Carga reseteada");
+    } catch {
+      showToast("Error al resetear carga");
+    }
+  }
+
   return (
     <main className="min-h-screen bg-(--color-surface-base) pb-20 text-(--color-text-primary)">
       <header className="sticky top-0 z-10 border-b border-(--color-border-subtle) bg-(--color-surface-1)/95 px-4 py-3 backdrop-blur-md">
-        <div className="mx-auto flex w-full max-w-5xl items-center gap-2">
-          <span className="font-(--font-mono) text-[0.6875rem] uppercase tracking-[0.18em] text-(--color-text-muted)">
-            FOR-PO-04
-          </span>
-          <span className="font-(--font-mono) text-(--color-border-strong)">
-            /
-          </span>
-          <span className="font-(--font-mono) text-[0.6875rem] uppercase tracking-[0.18em] text-(--color-brand-cyan)">
-            Carga
-          </span>
+        <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="font-(--font-mono) text-[0.6875rem] uppercase tracking-[0.18em] text-(--color-text-muted)">
+              FOR-PO-04
+            </span>
+            <span className="font-(--font-mono) text-(--color-border-strong)">
+              /
+            </span>
+            <span className="font-(--font-mono) text-[0.6875rem] uppercase tracking-[0.18em] text-(--color-brand-cyan)">
+              Carga
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <span
+              className={`font-(--font-mono) text-[0.5625rem] uppercase tracking-widest ${!isOnline ? "text-(--color-brand-amber)" : supabaseReady ? "text-(--color-brand-emerald)" : "text-(--color-text-faint)"}`}
+            >
+              {!isOnline
+                ? "○ Offline listo"
+                : supabaseReady
+                  ? "● Online"
+                  : "○ Offline"}
+            </span>
+
+            {(startedContext ||
+              leaderId ||
+              blastId ||
+              blastHoles.length > 0) && (
+              <button
+                type="button"
+                onClick={handleReset}
+                className="border-none bg-transparent p-1 font-(--font-mono) text-[0.625rem] uppercase tracking-widest text-(--color-text-muted) transition-colors hover:text-(--color-danger)"
+              >
+                Reset
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
@@ -485,6 +557,8 @@ export default function CargaForm() {
           onSave={handleSaveDraft}
         />
       )}
+
+      <Toast state={toastState} />
     </main>
   );
 }

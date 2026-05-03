@@ -5,7 +5,7 @@ import { holeRepository, operatorRepository } from "../di/container";
 import { supabaseReady } from "../infrastructure/supabase/supabaseClient";
 import { createClientId } from "../lib/ids";
 import {
-  clearAllRecords,
+  clearLocalViewState,
   clearOperatorSnapshot,
   deleteRecord,
   getPendingRecordsByKinds,
@@ -296,9 +296,11 @@ export default function OperatorForm() {
       return;
     }
 
-    saveOperatorSnapshot(buildSnapshot(shift, holes, blastHolesCatalog)).catch(() => {
-      // Offline save failed
-    });
+    saveOperatorSnapshot(buildSnapshot(shift, holes, blastHolesCatalog)).catch(
+      () => {
+        // Offline save failed
+      },
+    );
   }, [shift, holes, blastHolesCatalog, hydrated]);
 
   useEffect(() => {
@@ -432,7 +434,7 @@ export default function OperatorForm() {
     if (
       holes.length &&
       !window.confirm(
-        "Resetear turno? Datos siguen guardados localmente y en Supabase cuando hay conexion.",
+        "Verifica que tus cambios estén sincronizados. Esta accion no se puede deshacer.",
       )
     )
       return;
@@ -441,10 +443,10 @@ export default function OperatorForm() {
     setHeaderKey((prev) => prev + 1);
 
     try {
-      await clearOperatorSnapshot();
-      await clearAllRecords();
+      await clearLocalViewState("perforacion");
+      showToast("Perforacion reseteada");
     } catch {
-      // Reset cleanup failed
+      showToast("Error al resetear perforacion");
     }
   }
 

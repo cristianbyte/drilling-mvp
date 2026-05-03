@@ -8,6 +8,16 @@ const OPERATOR_KEY = 'operator-form'
 const CARGA_KEY = 'carga-form'
 const SYNC_PENDING = 0
 const SYNC_DONE = 1
+const VIEW_RESET_CONFIG = {
+  perforacion: {
+    snapshotKey: OPERATOR_KEY,
+    kinds: ['shift', 'hole'],
+  },
+  carga: {
+    snapshotKey: CARGA_KEY,
+    kinds: ['carga-context', 'carga-hole'],
+  },
+}
 const KIND_ORDER = {
   shift: 0,
   'carga-context': 0,
@@ -93,9 +103,29 @@ export async function deleteRecord(id) {
   await db.delete(RECORDS_STORE, id)
 }
 
-export async function clearAllRecords() {
+export async function clearLocalViewState(view) {
+  const config = VIEW_RESET_CONFIG[view]
+
+  if (!config) {
+    throw new Error(`Unknown local view state: ${view}`)
+  }
+
   const db = await dbPromise
-  await db.clear(RECORDS_STORE)
+  const tx = db.transaction([APP_STATE_STORE, RECORDS_STORE], 'readwrite')
+
+  await tx.objectStore(APP_STATE_STORE).delete(config.snapshotKey)
+
+  const recordsStore = tx.objectStore(RECORDS_STORE)
+  const records = await recordsStore.getAll()
+  const allowedKinds = new Set(config.kinds)
+
+  await Promise.all(
+    records
+      .filter(record => allowedKinds.has(record.kind))
+      .map(record => recordsStore.delete(record.id)),
+  )
+
+  await tx.done
 }
 
 export async function getPendingRecords() {
