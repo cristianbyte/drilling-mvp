@@ -110,7 +110,11 @@ export default function SupervisorCargaView() {
       </main>
 
       {excelModalOpen ? (
-        <SupervisorCargaExcelModal onClose={() => setExcelModalOpen(false)} />
+        <SupervisorCargaExcelModal
+          blastFull={selectedBlastFull}
+          loading={loadingDetail}
+          onClose={() => setExcelModalOpen(false)}
+        />
       ) : null}
     </>
   );

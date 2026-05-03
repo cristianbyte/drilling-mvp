@@ -184,12 +184,12 @@ export default function SupervisorCargaDetail({ blastFull, loading }) {
                 {[
                   "Barreno",
                   "Lider",
-                  "Planned depth",
-                  "Planned emulsion",
-                  "Leveling",
+                  "Prof. D.",
+                  "Emul. T. D.",
+                  "Nivelacion",
                   "Deck",
                   "Emulsion total",
-                  "Stemming final",
+                  "Ret. F. Real",
                 ].map((label) => (
                   <th
                     key={label}

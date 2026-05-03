@@ -444,6 +444,10 @@ export default function CargaForm() {
     );
   }
 
+  function handleSelectHole(hole) {
+    setActiveHoleId(hole?.id ?? null);
+  }
+
   async function handleReset() {
     const hasLocalData =
       Boolean(startedContext) ||
@@ -519,7 +523,7 @@ export default function CargaForm() {
         </div>
       </header>
 
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 overflow-x-hidden px-2 py-3 sm:px-4 md:px-6 [&_.section-card]:mx-0 [&_.section-card]:w-full [&_.section-card]:min-w-0">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-0 overflow-x-hidden px-2 py-3 sm:px-4 md:px-6 [&_.section-card]:mx-0 [&_.section-card]:w-full [&_.section-card]:min-w-0">
         <CargaLeaderSection
           blastId={blastId}
           blasts={blasts}
@@ -544,7 +548,7 @@ export default function CargaForm() {
             cargaBodyHeightClass={cargaBodyHeightClass}
             hasDraftData={hasDraftData}
             holeDrafts={holeDrafts}
-            onSelectHole={setActiveHoleId}
+            onSelectHole={handleSelectHole}
           />
         )}
       </div>

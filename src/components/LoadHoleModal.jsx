@@ -63,7 +63,7 @@ export default function LoadHoleModal({ hole, draft, onClose, onSave }) {
         <div className="overflow-y-auto px-4 py-4 sm:px-5">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="field-label">Planned depth</label>
+              <label className="field-label">Profundidad Diseño</label>
               <input
                 type="number"
                 value={toInputValue(localDraft.plannedDepth)}
@@ -74,7 +74,7 @@ export default function LoadHoleModal({ hole, draft, onClose, onSave }) {
             </div>
 
             <div>
-              <label className="field-label">Planned emulsion</label>
+              <label className="field-label">Emulsion Total</label>
               <input
                 type="number"
                 value={toInputValue(localDraft.plannedEmulsion)}
@@ -85,7 +85,7 @@ export default function LoadHoleModal({ hole, draft, onClose, onSave }) {
             </div>
 
             <div>
-              <label className="field-label">Planned stemming initial</label>
+              <label className="field-label">Retacado Inicial</label>
               <input
                 type="number"
                 value={toInputValue(localDraft.plannedStemmingInitial)}
@@ -96,7 +96,7 @@ export default function LoadHoleModal({ hole, draft, onClose, onSave }) {
             </div>
 
             <div>
-              <label className="field-label">Planned stemming final</label>
+              <label className="field-label">Retacado Final Diseño</label>
               <input
                 type="number"
                 value={toInputValue(localDraft.plannedStemmingFinal)}
@@ -107,11 +107,13 @@ export default function LoadHoleModal({ hole, draft, onClose, onSave }) {
             </div>
 
             <div>
-              <label className="field-label">Leveling</label>
+              <label className="field-label">Nivelacion</label>
               <input
                 type="number"
                 value={toInputValue(localDraft.leveling)}
-                onChange={(event) => handleChange("leveling", event.target.value)}
+                onChange={(event) =>
+                  handleChange("leveling", event.target.value)
+                }
                 className="field-input"
               />
             </div>
@@ -139,7 +141,7 @@ export default function LoadHoleModal({ hole, draft, onClose, onSave }) {
             </div>
 
             <div>
-              <label className="field-label">Stemming final</label>
+              <label className="field-label">Retacado Final Real</label>
               <input
                 type="number"
                 value={toInputValue(localDraft.stemmingFinal)}

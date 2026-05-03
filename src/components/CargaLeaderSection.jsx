@@ -93,30 +93,30 @@ export default function CargaLeaderSection({
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-3 sm:p-5">
-          <div className="rounded-[0.75rem] border border-(--color-border-subtle) bg-(--color-surface-base) px-4 py-3">
-            <p className="font-(--font-mono) text-[0.6rem] uppercase tracking-[0.14em] text-(--color-text-muted)">
+        <div className="flex flex-row gap-2 p-2 sm:p-3 ">
+          <div className="p-2 flex-1">
+            <p className="font-(--font-mono) text-xs uppercase tracking-[0.14em] text-(--color-text-faint)">
               Nombre
             </p>
-            <p className="mt-2 text-sm text-(--color-text-primary)">
+            <p className="mt-1 text-xs uppercase text-(--color-text-primary)">
               {startedContext.leaderName}
             </p>
           </div>
 
-          <div className="rounded-[0.75rem] border border-(--color-border-subtle) bg-(--color-surface-base) px-4 py-3">
-            <p className="font-(--font-mono) text-[0.6rem] uppercase tracking-[0.14em] text-(--color-text-muted)">
+          <div className="p-2 flex-1">
+            <p className="font-(--font-mono) text-xs uppercase tracking-[0.14em] text-(--color-text-faint)">
               Voladura
             </p>
-            <p className="mt-2 text-sm text-(--color-text-primary)">
+            <p className="mt-1 text-xs text-(--color-text-primary)">
               {startedContext.blastCode}
             </p>
           </div>
 
-          <div className="rounded-[0.75rem] border border-(--color-border-subtle) bg-(--color-surface-base) px-4 py-3">
-            <p className="font-(--font-mono) text-[0.6rem] uppercase tracking-[0.14em] text-(--color-text-muted)">
+          <div className="p-2 flex-1">
+            <p className="font-(--font-mono) text-xs uppercase tracking-[0.14em] text-(--color-text-faint)">
               Ubicacion
             </p>
-            <p className="mt-2 text-sm text-(--color-text-primary)">
+            <p className="mt-1 text-xs text-(--color-text-primary)">
               {startedContext.location}
             </p>
           </div>
