@@ -7,6 +7,10 @@ function parseOptionalNumber(value) {
   return Number.isNaN(numeric) ? null : numeric;
 }
 
+function formatHoleNumber(holeNumber) {
+  return String(holeNumber).padStart(2, "0");
+}
+
 export default function HoleEntry({
   availableHoles = [],
   loadingHoles = false,
@@ -20,10 +24,24 @@ export default function HoleEntry({
   });
   const [error, setError] = useState({ selectedHoleId: false, depth: false });
   const [saving, setSaving] = useState(false);
+  const [holeQuery, setHoleQuery] = useState("");
+  const [isHoleMenuOpen, setIsHoleMenuOpen] = useState(false);
+  const [activeHoleIndex, setActiveHoleIndex] = useState(0);
   const depthRef = useRef(null);
 
   const selectedHole =
     availableHoles.find((hole) => hole.id === form.selectedHoleId) ?? null;
+  const filteredHoles = availableHoles.filter((hole) => {
+    const formattedHoleNumber = formatHoleNumber(hole.holeNumber);
+    const normalizedQuery = holeQuery.trim();
+
+    if (!normalizedQuery) return true;
+
+    return (
+      formattedHoleNumber.includes(normalizedQuery) ||
+      String(hole.holeNumber).includes(normalizedQuery)
+    );
+  });
 
   useEffect(() => {
     depthRef.current?.focus();
@@ -35,12 +53,28 @@ export default function HoleEntry({
       !availableHoles.some((hole) => hole.id === form.selectedHoleId)
     ) {
       setForm((current) => ({ ...current, selectedHoleId: "" }));
+      setHoleQuery("");
     }
   }, [availableHoles, form.selectedHoleId]);
+
+  useEffect(() => {
+    setHoleQuery(selectedHole ? formatHoleNumber(selectedHole.holeNumber) : "");
+  }, [selectedHole]);
+
+  useEffect(() => {
+    setActiveHoleIndex(0);
+  }, [holeQuery]);
 
   function setField(key, val) {
     setForm((current) => ({ ...current, [key]: val }));
     setError((current) => ({ ...current, [key]: false }));
+  }
+
+  function selectHole(hole) {
+    setField("selectedHoleId", hole.id);
+    setHoleQuery(formatHoleNumber(hole.holeNumber));
+    setIsHoleMenuOpen(false);
+    setActiveHoleIndex(0);
   }
 
   function validate() {
@@ -80,8 +114,10 @@ export default function HoleEntry({
     try {
       await onSaved(hole);
       setForm({ selectedHoleId: "", depth: "", ceiling: "", floor: "" });
+      setHoleQuery("");
+      setIsHoleMenuOpen(false);
       showToast(
-        `Barreno ${String(selectedHole.holeNumber).padStart(2, "0")} guardado`,
+        `Barreno ${formatHoleNumber(selectedHole.holeNumber)} guardado`,
       );
       setTimeout(() => depthRef.current?.focus(), 80);
     } catch {
@@ -93,6 +129,58 @@ export default function HoleEntry({
 
   function handleKeyDown(event) {
     if (event.key === "Enter") handleSubmit();
+  }
+
+  function handleHoleInputChange(event) {
+    setHoleQuery(event.target.value);
+    setField("selectedHoleId", "");
+    setIsHoleMenuOpen(true);
+  }
+
+  function handleHoleInputKeyDown(event) {
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      if (!filteredHoles.length) return;
+      setIsHoleMenuOpen(true);
+      setActiveHoleIndex((current) =>
+        current >= filteredHoles.length - 1 ? 0 : current + 1,
+      );
+      return;
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      if (!filteredHoles.length) return;
+      setIsHoleMenuOpen(true);
+      setActiveHoleIndex((current) =>
+        current <= 0 ? filteredHoles.length - 1 : current - 1,
+      );
+      return;
+    }
+
+    if (event.key === "Enter") {
+      if (isHoleMenuOpen && filteredHoles[activeHoleIndex]) {
+        event.preventDefault();
+        selectHole(filteredHoles[activeHoleIndex]);
+        return;
+      }
+
+      handleSubmit();
+      return;
+    }
+
+    if (event.key === "Escape") {
+      setIsHoleMenuOpen(false);
+    }
+  }
+
+  function handleHoleInputBlur() {
+    window.setTimeout(() => {
+      setIsHoleMenuOpen(false);
+      setHoleQuery(
+        selectedHole ? formatHoleNumber(selectedHole.holeNumber) : "",
+      );
+    }, 120);
   }
 
   return (
@@ -126,27 +214,70 @@ export default function HoleEntry({
 
           <div>
             <label className="field-label">Barreno *</label>
-            <select
-              className={`field-input ${error.selectedHoleId ? "field-input--error" : ""}`}
-              value={form.selectedHoleId}
-              onChange={(event) =>
-                setField("selectedHoleId", event.target.value)
-              }
-              disabled={loadingHoles || !availableHoles.length}
-            >
-              <option value="">
-                {loadingHoles
-                  ? "Cargando barrenos..."
-                  : availableHoles.length
-                    ? "Seleccionar"
-                    : "Sin barrenos disponibles"}
-              </option>
-              {availableHoles.map((hole) => (
-                <option key={hole.id} value={hole.id}>
-                  B-{String(hole.holeNumber).padStart(2, "0")}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <input
+                className={`field-input font-(--font-mono) ${error.selectedHoleId ? "field-input--error" : ""}`}
+                type="text"
+                placeholder={
+                  loadingHoles
+                    ? "Cargando barrenos..."
+                    : availableHoles.length
+                      ? "00"
+                      : "Sin barrenos disponibles"
+                }
+                value={holeQuery}
+                onChange={handleHoleInputChange}
+                onFocus={() => setIsHoleMenuOpen(true)}
+                onBlur={handleHoleInputBlur}
+                onKeyDown={handleHoleInputKeyDown}
+                disabled={loadingHoles || !availableHoles.length}
+                inputMode="numeric"
+                autoComplete="off"
+                role="combobox"
+                aria-expanded={isHoleMenuOpen}
+                aria-autocomplete="list"
+                aria-controls="hole-entry-options"
+              />
+
+              {isHoleMenuOpen && !loadingHoles && availableHoles.length > 0 && (
+                <div
+                  id="hole-entry-options"
+                  className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-[var(--radius-input)] border border-(--color-border-default) bg-(--color-surface-2) shadow-lg"
+                  role="listbox"
+                >
+                  {filteredHoles.length ? (
+                    filteredHoles.map((hole, index) => {
+                      const formattedHoleNumber = formatHoleNumber(
+                        hole.holeNumber,
+                      );
+
+                      return (
+                        <button
+                          key={hole.id}
+                          type="button"
+                          className={`flex w-full items-center justify-between px-3 py-2 text-left font-(--font-mono) text-sm ${
+                            index === activeHoleIndex
+                              ? "bg-(--color-brand-amber) text-(--color-surface-base)"
+                              : "text-(--color-text-primary)"
+                          }`}
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={() => selectHole(hole)}
+                          onMouseEnter={() => setActiveHoleIndex(index)}
+                          role="option"
+                          aria-selected={form.selectedHoleId === hole.id}
+                        >
+                          <span>{formattedHoleNumber}</span>
+                        </button>
+                      );
+                    })
+                  ) : (
+                    <div className="px-3 py-2 font-(--font-mono) text-sm text-(--color-text-muted)">
+                      Sin coincidencias
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
             {error.selectedHoleId && (
               <p className="mt-1 font-(--font-mono) text-[0.625rem] text-(--color-danger)">
                 Barreno requerido
