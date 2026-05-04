@@ -16,6 +16,7 @@ import {
   saveCargaSnapshot,
   saveRecord,
 } from "../lib/offlineStore";
+import { usePageTitle } from "../hooks/usePageTitle";
 
 function buildStartedContext(leader, blast) {
   if (!leader || !blast) return null;
@@ -112,6 +113,7 @@ export default function CargaForm() {
   const syncingRef = useRef(false);
   const toastState = useToast();
 
+  usePageTitle("Carga");
   const selectedLeader = useMemo(
     () => leaders.find((leader) => leader.id === leaderId) ?? null,
     [leaderId, leaders],

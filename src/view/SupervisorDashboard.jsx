@@ -18,6 +18,7 @@ import {
   getTodayDateKey,
 } from "../lib/datetime";
 import { exportRowsToXlsx } from "../lib/exportXlsx";
+import { usePageTitle } from "../hooks/usePageTitle";
 
 const supervisorSubscriptionManager = new SubscriptionManager();
 
@@ -95,6 +96,7 @@ export default function SupervisorDashboard() {
   const [exporting, setExporting] = useState(false);
   const [exportFeedback, setExportFeedback] = useState("");
 
+  usePageTitle("Supervisor / Perforacion");
   const loadDashboardData = useCallback(async () => {
     const rows = await fetchLatestSupervisorRows(50);
     setRecentRows(rows);

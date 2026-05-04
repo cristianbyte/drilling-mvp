@@ -1,6 +1,8 @@
 import { Link } from "react-router-dom";
+import { usePageTitle } from "../hooks/usePageTitle";
 
 export default function NotFoundView() {
+  usePageTitle("404 - Ruta no encontrada");
   return (
     <main className="min-h-screen bg-(--color-surface-base) px-4 py-8 text-(--color-text-primary)">
       <div className="mx-auto flex min-h-screen w-full max-w-3xl items-center justify-center">
@@ -17,7 +19,7 @@ export default function NotFoundView() {
 
           <div className="space-y-6 px-6 py-7 sm:px-7">
             <div className="space-y-3">
-              <h1 className="font-(--font-sans) text-[2rem] font-semibold tracking-[-0.05em] text-(--color-text-primary)">
+              <h1 className="text-[2rem] font-semibold tracking-tighter text-(--color-text-primary)">
                 Ruta no encontrada
               </h1>
               <div className="h-px w-16 bg-(--color-danger)" />
@@ -28,7 +30,7 @@ export default function NotFoundView() {
 
             <Link
               to="/"
-              className="inline-flex w-full items-center justify-center rounded-[0.5rem] bg-(--color-brand-amber) px-4 py-4 font-(--font-mono) text-sm font-semibold uppercase tracking-[0.12em] text-(--color-surface-base) transition-all duration-150 hover:bg-[color:color-mix(in_srgb,var(--color-brand-amber)_82%,white)] active:scale-[0.99]"
+              className="inline-flex w-full items-center justify-center rounded-lg bg-(--color-brand-amber) px-4 py-4 text-sm font-semibold uppercase tracking-[0.12em] text-(--color-surface-base) transition-all duration-150 hover:bg-[color-mix(in_srgb,var(--color-brand-amber)_82%,white)] active:scale-[0.99]"
             >
               Volver
             </Link>

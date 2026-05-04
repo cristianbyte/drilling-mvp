@@ -17,6 +17,7 @@ import {
 } from "../lib/offlineStore";
 import ShiftHeader from "../components/ShiftHeader";
 import HoleEntry from "../components/HoleEntry";
+import { usePageTitle } from "../hooks/usePageTitle";
 
 function buildSnapshot(shift, holes, blastHolesCatalog) {
   return { shift, holes, blastHolesCatalog, savedAt: Date.now() };
@@ -74,6 +75,7 @@ export default function OperatorForm() {
   const [syncing, setSyncing] = useState(false);
   const syncingRef = useRef(false);
   const toastState = useToast();
+  usePageTitle("Perforacion");
 
   const syncPendingRecords = useCallback(
     async (manual = false) => {

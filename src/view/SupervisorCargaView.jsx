@@ -5,6 +5,7 @@ import SupervisorHeader from "../components/SupervisorHeader";
 import SupervisorCargaDetail from "../components/SupervisorCargaDetail";
 import SupervisorCargaSidebar from "../components/SupervisorCargaSidebar";
 import { blastRepository } from "../di/container";
+import { usePageTitle } from "../hooks/usePageTitle";
 
 export default function SupervisorCargaView() {
   const [excelModalOpen, setExcelModalOpen] = useState(false);
@@ -15,6 +16,7 @@ export default function SupervisorCargaView() {
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(null);
 
+  usePageTitle("Supervisor / Carga");
   const selectedBlast = useMemo(
     () => blasts.find((blast) => blast.id === selectedBlastId) ?? null,
     [blasts, selectedBlastId],
