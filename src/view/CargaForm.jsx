@@ -101,6 +101,7 @@ export default function CargaForm() {
   const [blasts, setBlasts] = useState([]);
   const [leaderId, setLeaderId] = useState("");
   const [blastId, setBlastId] = useState("");
+  const [holeFilter, setHoleFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [hydrated, setHydrated] = useState(false);
   const [isOnline, setIsOnline] = useState(() => window.navigator.onLine);
@@ -133,6 +134,21 @@ export default function CargaForm() {
     if (!activeHole) return null;
     return holeDrafts[activeHole.id] ?? buildLoadingDraft(activeHole.loading);
   }, [activeHole, holeDrafts]);
+
+  const filteredBlastHoles = useMemo(() => {
+    const normalizedFilter = holeFilter.trim();
+    if (!normalizedFilter) return blastHoles;
+
+    return blastHoles.filter((hole) => {
+      const holeNumber = String(hole.holeNumber ?? "");
+      const formattedHoleNumber = holeNumber.padStart(2, "0");
+
+      return (
+        holeNumber.includes(normalizedFilter) ||
+        formattedHoleNumber.includes(normalizedFilter)
+      );
+    });
+  }, [blastHoles, holeFilter]);
 
   const cargaBodyHeightClass = startedContext
     ? "lg:max-h-[calc(100vh-15rem)]"
@@ -386,6 +402,7 @@ export default function CargaForm() {
         holes.map((hole) => [hole.id, buildLoadingDraft(hole.loading)]),
       );
       setHoleDrafts(nextDrafts);
+      setHoleFilter("");
 
       await saveRecord(
         createPendingRecord(
@@ -400,6 +417,7 @@ export default function CargaForm() {
       setStartedContext(nextContext);
       setBlastHoles([]);
       setHoleDrafts({});
+      setHoleFilter("");
       await saveRecord(
         createPendingRecord(
           nextContext.contextId,
@@ -473,6 +491,7 @@ export default function CargaForm() {
     setBlastHoles([]);
     setHoleDrafts({});
     setActiveHoleId(null);
+    setHoleFilter("");
 
     try {
       await clearLocalViewState("carga");
@@ -545,12 +564,15 @@ export default function CargaForm() {
 
         {startedContext && (
           <CargaHolesSection
-            blastHoles={blastHoles}
+            blastHoles={filteredBlastHoles}
             buildLoadingDraft={buildLoadingDraft}
             cargaBodyHeightClass={cargaBodyHeightClass}
             hasDraftData={hasDraftData}
             holeDrafts={holeDrafts}
+            holeFilter={holeFilter}
             onSelectHole={handleSelectHole}
+            onHoleFilterChange={setHoleFilter}
+            totalBlastHoles={blastHoles.length}
           />
         )}
       </div>
