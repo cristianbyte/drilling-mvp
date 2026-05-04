@@ -44,11 +44,20 @@ export default defineConfig({
       workbox: {
         cleanupOutdatedCaches: true,
         navigateFallback: "/index.html",
+        navigateFallbackDenylist: [/^\/_vercel/, /\/api\//],
         globPatterns: ["**/*.{js,css,html,svg,png,ico}"],
         runtimeCaching: [
           {
+            urlPattern: ({ request }) => request.destination === "document",
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "drilling-documents",
+              networkTimeoutSeconds: 3,
+            },
+          },
+          {
             urlPattern: ({ request }) =>
-              ["document", "script", "style", "image", "font"].includes(
+              ["script", "style", "image", "font"].includes(
                 request.destination,
               ),
             handler: "CacheFirst",
