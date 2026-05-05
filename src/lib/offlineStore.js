@@ -15,14 +15,15 @@ const VIEW_RESET_CONFIG = {
   },
   carga: {
     snapshotKey: CARGA_KEY,
-    kinds: ['carga-context', 'carga-hole'],
+    kinds: ['carga-context', 'carga-density', 'carga-hole'],
   },
 }
 const KIND_ORDER = {
   shift: 0,
   'carga-context': 0,
+  'carga-density': 1,
   hole: 1,
-  'carga-hole': 1,
+  'carga-hole': 2,
 }
 
 function isSyncedValue(value) {

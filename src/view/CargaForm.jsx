@@ -1,11 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import CargaHolesSection from "../components/CargaHolesSection";
 import CargaLeaderSection from "../components/CargaLeaderSection";
+import DensityControlModal from "../components/DensityControlModal";
 import LoadHoleModal from "../components/LoadHoleModal";
 import Toast, { showToast, useToast } from "../components/Toast";
 import { blastRepository, holeRepository } from "../di/container";
 import { supabaseReady } from "../infrastructure/supabase/supabaseClient";
 import { createClientId } from "../lib/ids";
+import {
+  buildDensityDraft,
+  buildDensityPayload,
+  hasDensityData,
+} from "../lib/densityControl";
 import {
   clearLocalViewState,
   clearCargaSnapshot,
@@ -64,6 +70,7 @@ function buildSnapshot({
   blastId,
   startedContext,
   blastHoles,
+  densityDraft,
   holeDrafts,
 }) {
   return {
@@ -71,6 +78,7 @@ function buildSnapshot({
     blastId,
     startedContext,
     blastHoles,
+    densityDraft,
     holeDrafts,
     savedAt: Date.now(),
   };
@@ -109,8 +117,10 @@ export default function CargaForm() {
   const [startingTurn, setStartingTurn] = useState(false);
   const [startedContext, setStartedContext] = useState(null);
   const [blastHoles, setBlastHoles] = useState([]);
+  const [densityDraft, setDensityDraft] = useState(null);
   const [holeDrafts, setHoleDrafts] = useState({});
   const [activeHoleId, setActiveHoleId] = useState(null);
+  const [densityModalOpen, setDensityModalOpen] = useState(false);
   const syncingRef = useRef(false);
   const toastState = useToast();
 
@@ -166,6 +176,7 @@ export default function CargaForm() {
         setBlastHoles(
           Array.isArray(snapshot.blastHoles) ? snapshot.blastHoles : [],
         );
+        setDensityDraft(snapshot.densityDraft || null);
         setHoleDrafts(snapshot.holeDrafts || {});
       })
       .catch(() => {
@@ -236,15 +247,25 @@ export default function CargaForm() {
         blastId,
         startedContext,
         blastHoles,
+        densityDraft,
         holeDrafts,
       }),
     ).catch(() => {
       // Offline save failed
     });
-  }, [blastHoles, blastId, holeDrafts, hydrated, leaderId, startedContext]);
+  }, [
+    blastHoles,
+    blastId,
+    densityDraft,
+    holeDrafts,
+    hydrated,
+    leaderId,
+    startedContext,
+  ]);
 
   const pendingSyncCount =
     (startedContext && !isSyncedValue(startedContext.synced) ? 1 : 0) +
+    (densityDraft && !isSyncedValue(densityDraft.synced) ? 1 : 0) +
     Object.values(holeDrafts).filter((draft) => !isSyncedValue(draft?.synced))
       .length;
 
@@ -258,12 +279,15 @@ export default function CargaForm() {
     try {
       const pending = await getPendingRecordsByKinds([
         "carga-context",
+        "carga-density",
         "carga-hole",
       ]);
       if (!pending.length) return;
 
       const syncedContextIds = new Set();
       const pendingContextIds = new Set();
+      const syncedDensityContextIds = new Set();
+      const pendingDensityContextIds = new Set();
       const syncedHoleIds = new Set();
       const pendingHoleIds = new Set();
       const syncedContexts = new Map();
@@ -295,6 +319,52 @@ export default function CargaForm() {
           await markRecordSynced(record.id);
           syncedContextIds.add(record.id);
           syncedContexts.set(record.id, nextContext);
+        }
+
+        if (record.kind === "carga-density") {
+          const densityData = { ...record.data };
+          delete densityData.synced;
+
+          const baseContext =
+            syncedContexts.get(densityData.contextId) ||
+            (startedContext?.contextId === densityData.contextId
+              ? startedContext
+              : null);
+
+          if (!densityData.blastId) {
+            await markRecordPending(
+              record.id,
+              "Falta voladura para sincronizar control de densidad",
+            );
+            pendingDensityContextIds.add(densityData.contextId);
+            continue;
+          }
+
+          const updatedBy =
+            densityData.updatedBy ||
+            baseContext?.leaderName ||
+            densityData.leaderName ||
+            "Lider";
+
+          await blastRepository.upsertDensity(
+            densityData.blastId,
+            buildDensityPayload(densityData),
+            updatedBy,
+          );
+
+          const nextDensityData = {
+            ...densityData,
+            updatedBy,
+            synced: true,
+          };
+
+          await saveRecord({
+            ...record,
+            data: nextDensityData,
+            synced: true,
+          });
+          await markRecordSynced(record.id);
+          syncedDensityContextIds.add(densityData.contextId);
         }
 
         if (record.kind === "carga-hole") {
@@ -352,6 +422,19 @@ export default function CargaForm() {
         });
       }
 
+      if (syncedDensityContextIds.size || pendingDensityContextIds.size) {
+        setDensityDraft((prev) => {
+          if (!prev || !startedContext?.contextId) return prev;
+          if (syncedDensityContextIds.has(startedContext.contextId)) {
+            return { ...prev, synced: true };
+          }
+          if (pendingDensityContextIds.has(startedContext.contextId)) {
+            return { ...prev, synced: false };
+          }
+          return prev;
+        });
+      }
+
       if (syncedHoleIds.size || pendingHoleIds.size) {
         setHoleDrafts((current) =>
           Object.fromEntries(
@@ -395,14 +478,18 @@ export default function CargaForm() {
       );
       const holes = blastFull?.holes ?? [];
       const nextContext = buildStartedContext(selectedLeader, selectedBlast);
+      const nextDensityDraft = buildDensityDraft(blastFull);
 
       setStartedContext(nextContext);
       setBlastHoles(holes);
+      setDensityDraft(nextDensityDraft);
       const nextDrafts = Object.fromEntries(
         holes.map((hole) => [hole.id, buildLoadingDraft(hole.loading)]),
       );
       setHoleDrafts(nextDrafts);
       setHoleFilter("");
+      setActiveHoleId(null);
+      setDensityModalOpen(false);
 
       await saveRecord(
         createPendingRecord(
@@ -416,8 +503,11 @@ export default function CargaForm() {
       const nextContext = buildStartedContext(selectedLeader, selectedBlast);
       setStartedContext(nextContext);
       setBlastHoles([]);
+      setDensityDraft(buildDensityDraft());
       setHoleDrafts({});
       setHoleFilter("");
+      setActiveHoleId(null);
+      setDensityModalOpen(false);
       await saveRecord(
         createPendingRecord(
           nextContext.contextId,
@@ -464,6 +554,33 @@ export default function CargaForm() {
     );
   }
 
+  async function handleSaveDensity(nextDraft) {
+    const draftWithSync = {
+      ...nextDraft,
+      synced: false,
+    };
+
+    setDensityDraft(draftWithSync);
+    setDensityModalOpen(false);
+
+    if (!startedContext) return;
+
+    await saveRecord(
+      createPendingRecord(
+        `carga-density:${startedContext.contextId}:${startedContext.blastId}`,
+        "carga-density",
+        {
+          contextId: startedContext.contextId,
+          blastId: startedContext.blastId,
+          leaderId: startedContext.leaderId,
+          leaderName: startedContext.leaderName,
+          updatedBy: startedContext.leaderName,
+          ...draftWithSync,
+        },
+      ),
+    );
+  }
+
   function handleSelectHole(hole) {
     setActiveHoleId(hole?.id ?? null);
   }
@@ -474,6 +591,7 @@ export default function CargaForm() {
       Boolean(leaderId) ||
       Boolean(blastId) ||
       blastHoles.length > 0 ||
+      Boolean(densityDraft) ||
       Object.keys(holeDrafts).length > 0;
 
     if (
@@ -489,8 +607,10 @@ export default function CargaForm() {
     setBlastId("");
     setStartedContext(null);
     setBlastHoles([]);
+    setDensityDraft(null);
     setHoleDrafts({});
     setActiveHoleId(null);
+    setDensityModalOpen(false);
     setHoleFilter("");
 
     try {
@@ -567,9 +687,14 @@ export default function CargaForm() {
             blastHoles={filteredBlastHoles}
             buildLoadingDraft={buildLoadingDraft}
             cargaBodyHeightClass={cargaBodyHeightClass}
+            densityPendingSync={Boolean(
+              densityDraft && !isSyncedValue(densityDraft.synced),
+            )}
             hasDraftData={hasDraftData}
+            hasDensityData={hasDensityData(densityDraft)}
             holeDrafts={holeDrafts}
             holeFilter={holeFilter}
+            onOpenDensityControl={() => setDensityModalOpen(true)}
             onSelectHole={handleSelectHole}
             onHoleFilterChange={setHoleFilter}
             totalBlastHoles={blastHoles.length}
@@ -583,6 +708,15 @@ export default function CargaForm() {
           draft={activeDraft}
           onClose={() => setActiveHoleId(null)}
           onSave={handleSaveDraft}
+        />
+      )}
+
+      {densityModalOpen && densityDraft && startedContext && (
+        <DensityControlModal
+          blast={selectedBlast || startedContext}
+          draft={densityDraft}
+          onClose={() => setDensityModalOpen(false)}
+          onSave={handleSaveDensity}
         />
       )}
 

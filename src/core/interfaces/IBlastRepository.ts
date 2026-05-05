@@ -11,11 +11,11 @@ export interface IBlastRepository {
       | "isComplete"
       | "completedAt"
       | "densityComplete"
-      | "sample1"
-      | "sample2"
-      | "sample3"
-      | "sample4"
-      | "finalWeight"
+      | "sample_1"
+      | "sample_2"
+      | "sample_3"
+      | "sample_4"
+      | "final_weight"
     >,
   ): Promise<string | null>;
   findOrCreateBlast(
@@ -28,11 +28,11 @@ export interface IBlastRepository {
       | "isComplete"
       | "completedAt"
       | "densityComplete"
-      | "sample1"
-      | "sample2"
-      | "sample3"
-      | "sample4"
-      | "finalWeight"
+      | "sample_1"
+      | "sample_2"
+      | "sample_3"
+      | "sample_4"
+      | "final_weight"
     >,
   ): Promise<string | null>;
   fetchAllBlasts(): Promise<Blast[]>;
@@ -46,7 +46,7 @@ export interface IBlastRepository {
     blastId: string,
     patch: Pick<
       Blast,
-      "sample1" | "sample2" | "sample3" | "sample4" | "finalWeight"
+      "sample_1" | "sample_2" | "sample_3" | "sample_4" | "final_weight"
     >,
     updatedBy: string,
   ): Promise<void>;

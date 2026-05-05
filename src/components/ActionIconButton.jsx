@@ -17,7 +17,7 @@ export default function ActionIconButton({
         "--btn-hover-color": hoverColor,
       }}
       disabled={disabled}
-      className={`flex items-center rounded border-none bg-transparent p-1 text-[color:var(--btn-color)] transition-colors duration-150 cursor-pointer enabled:hover:text-[color:var(--btn-hover-color)] disabled:cursor-default disabled:opacity-70 ${className}`}
+      className={`inline-flex items-center justify-center gap-1.5 rounded border-none bg-transparent p-1 text-[color:var(--btn-color)] transition-colors duration-150 cursor-pointer enabled:hover:text-[color:var(--btn-hover-color)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--btn-hover-color)]/30 disabled:cursor-default disabled:opacity-70 ${className}`}
     >
       {children}
     </button>

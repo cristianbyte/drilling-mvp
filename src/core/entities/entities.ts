@@ -28,11 +28,11 @@ export interface Blast {
   id: string;
   blastCode: string;
   location: SiteEnum;
-  sample1: number | null;
-  sample2: number | null;
-  sample3: number | null;
-  sample4: number | null;
-  finalWeight: number | null;
+  sample_1: number | null;
+  sample_2: number | null;
+  sample_3: number | null;
+  sample_4: number | null;
+  final_weight: number | null;
   densityComplete: boolean; // trigger DB — nunca computar en frontend
   isComplete: boolean; // trigger DB — nunca computar en frontend
   completedAt: string | null;

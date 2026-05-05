@@ -1,13 +1,17 @@
 import { useRef } from "react";
 import CargaHoleCard from "./CargaHoleCard";
+import ActionIconButton from "./ActionIconButton";
 
 export default function CargaHolesSection({
   blastHoles,
   buildLoadingDraft,
   cargaBodyHeightClass,
+  densityPendingSync,
   hasDraftData,
+  hasDensityData,
   holeDrafts,
   holeFilter,
+  onOpenDensityControl,
   onSelectHole,
   onHoleFilterChange,
   totalBlastHoles,
@@ -15,6 +19,26 @@ export default function CargaHolesSection({
   const filterContainerRef = useRef(null);
   const hasHoles = totalBlastHoles > 0;
   const hasMatches = blastHoles.length > 0;
+  const densityColor = densityPendingSync
+    ? "var(--color-brand-amber)"
+    : hasDensityData
+      ? "var(--color-brand-cyan)"
+      : "var(--color-text-muted)";
+  const densityActionClass = densityPendingSync
+    ? "border-(--color-brand-amber) bg-(--color-brand-amber-dim)"
+    : hasDensityData
+      ? "border-(--color-brand-cyan) bg-(--color-brand-cyan-dim)"
+      : "border-(--color-border-default) bg-(--color-surface-base)";
+  const densityBadgeClass = densityPendingSync
+    ? "bg-(--color-brand-amber) text-white"
+    : hasDensityData
+      ? "bg-(--color-brand-cyan) text-white"
+      : "bg-(--color-surface-1) text-(--color-text-faint)";
+  const densityStatus = densityPendingSync
+    ? "Pend."
+    : hasDensityData
+      ? "Sincronizado"
+      : "Vacio";
 
   function handleFilterFocus() {
     filterContainerRef.current?.scrollIntoView({
@@ -28,6 +52,22 @@ export default function CargaHolesSection({
       <div className="section-header">
         <div className="dot bg-(--color-brand-emerald)" />
         <span className="section-title">Datos de carga</span>
+        <ActionIconButton
+          title="Abrir control de densidad"
+          onClick={onOpenDensityControl}
+          color={densityColor}
+          hoverColor={densityColor}
+          className={`ml-auto rounded-[var(--radius-pill)] border px-3 py-2 transition-all enabled:hover:-translate-y-px enabled:hover:border-(--color-border-strong) ${densityActionClass}`}
+        >
+          <span className="rounded-full border border-(--color-border-subtle) bg-(--color-surface-1) px-3 py-1 font-(--font-mono) text-[0.625rem] uppercase tracking-[0.12em] text-(--color-text-faint)">
+            C. Densidad
+          </span>
+          <span
+            className={`rounded-full px-2 py-0.5 font-(--font-mono) text-[0.5625rem] uppercase tracking-[0.12em] ${densityBadgeClass}`}
+          >
+            {densityStatus}
+          </span>
+        </ActionIconButton>
       </div>
       <div
         ref={filterContainerRef}

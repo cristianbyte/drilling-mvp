@@ -13,10 +13,10 @@ type DbBlastRow = {
   id: string;
   blast_code: string;
   location: SiteEnum;
-  sample1: number | null;
-  sample2: number | null;
-  sample3: number | null;
-  sample4: number | null;
+  sample_1: number | null;
+  sample_2: number | null;
+  sample_3: number | null;
+  sample_4: number | null;
   final_weight: number | null;
   density_complete: boolean;
   is_complete: boolean;
@@ -124,11 +124,11 @@ export class SupabaseBlastRepository implements IBlastRepository {
       id: row.id,
       blastCode: row.blast_code,
       location: row.location,
-      sample1: row.sample1,
-      sample2: row.sample2,
-      sample3: row.sample3,
-      sample4: row.sample4,
-      finalWeight: row.final_weight,
+      sample_1: row.sample_1,
+      sample_2: row.sample_2,
+      sample_3: row.sample_3,
+      sample_4: row.sample_4,
+      final_weight: row.final_weight,
       densityComplete: row.density_complete,
       isComplete: row.is_complete,
       completedAt: row.completed_at,
@@ -195,11 +195,11 @@ export class SupabaseBlastRepository implements IBlastRepository {
       | "isComplete"
       | "completedAt"
       | "densityComplete"
-      | "sample1"
-      | "sample2"
-      | "sample3"
-      | "sample4"
-      | "finalWeight"
+      | "sample_1"
+      | "sample_2"
+      | "sample_3"
+      | "sample_4"
+      | "final_weight"
     >,
   ) {
     return {
@@ -218,11 +218,11 @@ export class SupabaseBlastRepository implements IBlastRepository {
       | "isComplete"
       | "completedAt"
       | "densityComplete"
-      | "sample1"
-      | "sample2"
-      | "sample3"
-      | "sample4"
-      | "finalWeight"
+      | "sample_1"
+      | "sample_2"
+      | "sample_3"
+      | "sample_4"
+      | "final_weight"
     >,
   ): Promise<string | null> {
     const { data: result, error } = await supabase
@@ -249,11 +249,11 @@ export class SupabaseBlastRepository implements IBlastRepository {
       | "isComplete"
       | "completedAt"
       | "densityComplete"
-      | "sample1"
-      | "sample2"
-      | "sample3"
-      | "sample4"
-      | "finalWeight"
+      | "sample_1"
+      | "sample_2"
+      | "sample_3"
+      | "sample_4"
+      | "final_weight"
     >,
   ): Promise<string | null> {
     const { data: existing, error } = await supabase
@@ -473,18 +473,18 @@ export class SupabaseBlastRepository implements IBlastRepository {
     blastId: string,
     patch: Pick<
       Blast,
-      "sample1" | "sample2" | "sample3" | "sample4" | "finalWeight"
+      "sample_1" | "sample_2" | "sample_3" | "sample_4" | "final_weight"
     >,
     updatedBy: string,
   ): Promise<void> {
     const { error } = await supabase
       .from("blasts")
       .update({
-        sample1: patch.sample1,
-        sample2: patch.sample2,
-        sample3: patch.sample3,
-        sample4: patch.sample4,
-        final_weight: patch.finalWeight,
+        sample_1: patch.sample_1,
+        sample_2: patch.sample_2,
+        sample_3: patch.sample_3,
+        sample_4: patch.sample_4,
+        final_weight: patch.final_weight,
         updated_by: updatedBy,
       })
       .eq("id", blastId);

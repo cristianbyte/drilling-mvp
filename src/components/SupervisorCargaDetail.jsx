@@ -1,3 +1,5 @@
+import { densityControlFields } from "../lib/densityControl";
+
 function countLoadedHoles(holes) {
   return holes.filter((hole) => {
     const loading = hole.loading;
@@ -96,6 +98,32 @@ export default function SupervisorCargaDetail({ blastFull, loading }) {
             <p className="mt-2 text-sm text-(--color-text-primary)">
               {loadedCount}
             </p>
+          </div>
+        </div>
+
+        <div className="rounded-[0.75rem] border border-(--color-border-subtle) bg-(--color-surface-base) p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="font-(--font-mono) text-[0.6rem] uppercase tracking-[0.14em] text-(--color-text-muted)">
+                Control de densidad
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            {densityControlFields.map(({ key, label }) => (
+              <div
+                key={key}
+                className="rounded-[0.75rem] border border-(--color-border-subtle) bg-(--color-surface-1) px-4 py-3"
+              >
+                <p className="font-(--font-mono) text-[0.5625rem] uppercase tracking-[0.12em] text-(--color-text-muted)">
+                  {label}
+                </p>
+                <p className="mt-2 text-sm text-(--color-text-primary)">
+                  {renderValue(blastFull[key])}
+                </p>
+              </div>
+            ))}
           </div>
         </div>
 
