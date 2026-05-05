@@ -1,4 +1,4 @@
-import { densityControlFields } from "../lib/densityControl";
+// import { densityControlFields } from "../lib/densityControl";
 
 function countLoadedHoles(holes) {
   return holes.filter((hole) => {
@@ -115,7 +115,7 @@ export default function SupervisorCargaDetail({ blastFull, loading }) {
           </div>
         </div>
 
-        <div className="rounded-[0.75rem] border border-(--color-border-subtle) bg-(--color-surface-base) p-4">
+        {/* <div className="rounded-[0.75rem] border border-(--color-border-subtle) bg-(--color-surface-base) p-4">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="font-(--font-mono) text-[0.6rem] uppercase tracking-[0.14em] text-(--color-text-muted)">
@@ -139,7 +139,7 @@ export default function SupervisorCargaDetail({ blastFull, loading }) {
               </div>
             ))}
           </div>
-        </div>
+        </div> */}
 
         <div className="space-y-3 lg:hidden">
           {blastFull.holes.map((hole) => {
