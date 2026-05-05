@@ -50,7 +50,7 @@ export default function CargaHolesSection({
               inputMode="numeric"
               min="0"
               max="1000"
-              className="field-input font-(--font-mono)"
+              className="field-input text-center font-(--font-mono)"
             />
           </div>
         </div>
@@ -79,11 +79,11 @@ export default function CargaHolesSection({
               })}
             </div>
           ) : hasHoles ? (
-            <div className="rounded-[0.75rem] border border-dashed border-(--color-border-default) bg-(--color-surface-base) px-4 py-8 text-center font-(--font-mono) text-[0.6875rem] uppercase tracking-[0.14em] text-(--color-text-muted)">
+            <div className="rounded-xl border border-dashed border-(--color-border-default) bg-(--color-surface-base) px-4 py-8 text-center font-(--font-mono) text-[0.6875rem] uppercase tracking-[0.14em] text-(--color-text-muted)">
               Sin coincidencias para ese barreno
             </div>
           ) : (
-            <div className="rounded-[0.75rem] border border-dashed border-(--color-border-default) bg-(--color-surface-base) px-4 py-8 text-center font-(--font-mono) text-[0.6875rem] uppercase tracking-[0.14em] text-(--color-text-muted)">
+            <div className="rounded-xl border border-dashed border-(--color-border-default) bg-(--color-surface-base) px-4 py-8 text-center font-(--font-mono) text-[0.6875rem] uppercase tracking-[0.14em] text-(--color-text-muted)">
               Voladura sin barrenos cargados
             </div>
           )}

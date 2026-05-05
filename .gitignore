@@ -52,6 +52,9 @@ node_modules/
 
 # dotenv environment variables file
 .env
+.env.local
+.env.development
+.env.production
 
 # dataconnect generated files
 .dataconnect
@@ -66,3 +69,5 @@ node_modules/
 # HTTP files
 .http
 
+# supabase
+supabase/
