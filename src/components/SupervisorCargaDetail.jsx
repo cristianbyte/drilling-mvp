@@ -63,7 +63,7 @@ export default function SupervisorCargaDetail({ blastFull, loading }) {
       </div>
 
       <div className="space-y-4 p-4 sm:p-5">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <div className="rounded-[0.75rem] border border-(--color-border-subtle) bg-(--color-surface-base) px-4 py-3">
             <p className="font-(--font-mono) text-[0.6rem] uppercase tracking-[0.14em] text-(--color-text-muted)">
               Voladura
@@ -84,7 +84,7 @@ export default function SupervisorCargaDetail({ blastFull, loading }) {
 
           <div className="rounded-[0.75rem] border border-(--color-border-subtle) bg-(--color-surface-base) px-4 py-3">
             <p className="font-(--font-mono) text-[0.6rem] uppercase tracking-[0.14em] text-(--color-text-muted)">
-              Barrenos
+              Total Pozos
             </p>
             <p className="mt-2 text-sm text-(--color-text-primary)">
               {blastFull.holes.length}
@@ -93,10 +93,24 @@ export default function SupervisorCargaDetail({ blastFull, loading }) {
 
           <div className="rounded-[0.75rem] border border-(--color-border-subtle) bg-(--color-surface-base) px-4 py-3">
             <p className="font-(--font-mono) text-[0.6rem] uppercase tracking-[0.14em] text-(--color-text-muted)">
-              Cargados
+              Pozos con datos
             </p>
             <p className="mt-2 text-sm text-(--color-text-primary)">
               {loadedCount}
+            </p>
+          </div>
+
+          <div className="rounded-[0.75rem] border border-(--color-border-subtle) bg-(--color-surface-base) px-4 py-3">
+            <p className="font-(--font-mono) text-[0.6rem] uppercase tracking-[0.14em] text-(--color-text-muted)">
+              Emulsion T. Acu.
+            </p>
+            <p className="mt-2 text-sm text-(--color-text-primary)">
+              {blastFull.holes
+                .reduce((sum, hole) => {
+                  const emulsion = hole.loading?.emulsionTotal;
+                  return sum + (emulsion ? parseFloat(emulsion) : 0);
+                }, 0)
+                .toFixed(2)}
             </p>
           </div>
         </div>

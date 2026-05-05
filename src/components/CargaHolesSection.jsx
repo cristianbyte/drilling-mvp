@@ -1,17 +1,25 @@
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 import CargaHoleCard from "./CargaHoleCard";
-import ActionIconButton from "./ActionIconButton";
+
+function parseNumericValue(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatEmulsionTotal(value) {
+  return value.toLocaleString("es-DO", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
+}
 
 export default function CargaHolesSection({
   blastHoles,
   buildLoadingDraft,
   cargaBodyHeightClass,
-  densityPendingSync,
   hasDraftData,
-  hasDensityData,
   holeDrafts,
   holeFilter,
-  onOpenDensityControl,
   onSelectHole,
   onHoleFilterChange,
   totalBlastHoles,
@@ -19,26 +27,21 @@ export default function CargaHolesSection({
   const filterContainerRef = useRef(null);
   const hasHoles = totalBlastHoles > 0;
   const hasMatches = blastHoles.length > 0;
-  const densityColor = densityPendingSync
-    ? "var(--color-brand-amber)"
-    : hasDensityData
-      ? "var(--color-brand-cyan)"
-      : "var(--color-text-muted)";
-  const densityActionClass = densityPendingSync
-    ? "border-(--color-brand-amber) bg-(--color-brand-amber-dim)"
-    : hasDensityData
-      ? "border-(--color-brand-cyan) bg-(--color-brand-cyan-dim)"
-      : "border-(--color-border-default) bg-(--color-surface-base)";
-  const densityBadgeClass = densityPendingSync
-    ? "bg-(--color-brand-amber) text-white"
-    : hasDensityData
-      ? "bg-(--color-brand-cyan) text-white"
-      : "bg-(--color-surface-1) text-(--color-text-faint)";
-  const densityStatus = densityPendingSync
-    ? "Pend."
-    : hasDensityData
-      ? "Sincronizado"
-      : "Vacio";
+  const totalEmulsion = useMemo(() => {
+    const draftValues = Object.values(holeDrafts || {});
+
+    if (draftValues.length > 0) {
+      return draftValues.reduce(
+        (sum, draft) => sum + parseNumericValue(draft?.emulsionTotal),
+        0,
+      );
+    }
+
+    return blastHoles.reduce(
+      (sum, hole) => sum + parseNumericValue(hole.loading?.emulsionTotal),
+      0,
+    );
+  }, [blastHoles, holeDrafts]);
 
   function handleFilterFocus() {
     filterContainerRef.current?.scrollIntoView({
@@ -52,7 +55,7 @@ export default function CargaHolesSection({
       <div className="section-header">
         <div className="dot bg-(--color-brand-emerald)" />
         <span className="section-title">Datos de carga</span>
-        <ActionIconButton
+        {/* <ActionIconButton
           title="Abrir control de densidad"
           onClick={onOpenDensityControl}
           color={densityColor}
@@ -67,7 +70,13 @@ export default function CargaHolesSection({
           >
             {densityStatus}
           </span>
-        </ActionIconButton>
+        </ActionIconButton> */}
+        <span className="ml-auto text-sm rounded-full border border-(--color-border-subtle) bg-(--color-surface-1) px-3 py-1 font-(--font-mono) uppercase tracking-[0.12em] text-(--color-text-muted)">
+          Emulsion Total:{" "}
+          <strong className="text-(--color-brand-amber)">
+            {formatEmulsionTotal(totalEmulsion)}
+          </strong>
+        </span>
       </div>
       <div
         ref={filterContainerRef}
