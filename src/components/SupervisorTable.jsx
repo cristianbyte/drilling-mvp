@@ -136,18 +136,6 @@ export default function SupervisorTable({
           gap: 10,
         }}
       >
-        <span
-          style={{
-            fontFamily: "var(--font-mono)",
-            fontSize: 10,
-            textTransform: "uppercase",
-            letterSpacing: "0.12em",
-            color: "var(--color-text-muted)",
-          }}
-        >
-          Ultimos 50 registros + tiempo real
-        </span>
-
         <div
           style={{
             display: "flex",

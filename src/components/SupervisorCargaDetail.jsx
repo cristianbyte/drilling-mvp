@@ -18,6 +18,17 @@ function renderValue(value) {
   return value ?? "-";
 }
 
+function sortHolesByRecentLoading(holes) {
+  return [...holes].sort((a, b) => {
+    const aRecency =
+      a.loading?.updatedAt || a.loading?.createdAt || a.createdAt || "";
+    const bRecency =
+      b.loading?.updatedAt || b.loading?.createdAt || b.createdAt || "";
+
+    return new Date(bRecency || 0) - new Date(aRecency || 0);
+  });
+}
+
 export default function SupervisorCargaDetail({ blastFull, loading }) {
   if (loading) {
     return (
@@ -54,6 +65,7 @@ export default function SupervisorCargaDetail({ blastFull, loading }) {
   }
 
   const loadedCount = countLoadedHoles(blastFull.holes);
+  const sortedHoles = sortHolesByRecentLoading(blastFull.holes);
 
   return (
     <section className="section-card w-full min-w-0 overflow-hidden">
@@ -142,7 +154,7 @@ export default function SupervisorCargaDetail({ blastFull, loading }) {
         </div> */}
 
         <div className="space-y-3 lg:hidden">
-          {blastFull.holes.map((hole) => {
+          {sortedHoles.map((hole) => {
             const loadingRow = hole.loading;
 
             return (
@@ -244,7 +256,7 @@ export default function SupervisorCargaDetail({ blastFull, loading }) {
             </thead>
 
             <tbody className="bg-(--color-surface-1)">
-              {blastFull.holes.map((hole) => {
+              {sortedHoles.map((hole) => {
                 const loadingRow = hole.loading;
 
                 return (

@@ -104,6 +104,65 @@ export class SubscriptionManager {
     };
   }
 
+  subscribeSupervisorLoadingRows(
+    fetchFn: () => Promise<Record<string, any>>,
+    callback: (data: Record<string, any>) => void,
+  ): () => void {
+    const channelName = "supervisor-loading";
+
+    const subscription = supabase
+      .channel(channelName)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "blasts",
+        },
+        () => fetchFn().then(callback),
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "holes",
+        },
+        () => fetchFn().then(callback),
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "hole_loading",
+        },
+        () => fetchFn().then(callback),
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "leaders",
+        },
+        () => fetchFn().then(callback),
+      )
+      .subscribe((status, error) => {
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          console.error(`Realtime ${channelName} status:`, status, error);
+        }
+
+        if (status === "SUBSCRIBED") {
+          console.info(`Realtime ${channelName} subscribed`);
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(subscription);
+    };
+  }
+
   subscribeRecentHoles(
     limit: number,
     fetchFn: (limit: number) => Promise<Record<string, any>>,

@@ -2,8 +2,10 @@ import { SupabaseBlastRepository } from "../infrastructure/supabase/SupabaseBlas
 import { SupabaseHoleRepository } from "../infrastructure/supabase/SupabaseHoleRepository";
 import { SupabaseOperatorRepository } from "../infrastructure/supabase/SupabaseOperatorRepository";
 import { SupabaseLeaderRepository } from "../infrastructure/supabase/SupabaseLeaderRepository";
+import { SupabaseSupervisorRepository } from "../infrastructure/supabase/SupabaseSupervisorRepository";
 
 export const blastRepository = new SupabaseBlastRepository();
 export const holeRepository = new SupabaseHoleRepository();
 export const operatorRepository = new SupabaseOperatorRepository();
 export const leaderRepository = new SupabaseLeaderRepository();
+export const supervisorRepository = new SupabaseSupervisorRepository();

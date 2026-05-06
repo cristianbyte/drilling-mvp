@@ -1,81 +1,76 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import SupervisorCargaExcelAction from "../components/SupervisorCargaExcelAction";
 import SupervisorCargaExcelModal from "../components/SupervisorCargaExcelModal";
 import SupervisorHeader from "../components/SupervisorHeader";
 import SupervisorCargaDetail from "../components/SupervisorCargaDetail";
 import SupervisorCargaSidebar from "../components/SupervisorCargaSidebar";
-import { blastRepository } from "../di/container";
+import { supervisorRepository } from "../di/container";
 import { usePageTitle } from "../hooks/usePageTitle";
 
 export default function SupervisorCargaView() {
   const [excelModalOpen, setExcelModalOpen] = useState(false);
   const [blasts, setBlasts] = useState([]);
+  const [blastFullById, setBlastFullById] = useState({});
   const [loadingBlasts, setLoadingBlasts] = useState(true);
   const [selectedBlastId, setSelectedBlastId] = useState("");
-  const [selectedBlastFull, setSelectedBlastFull] = useState(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(null);
 
   usePageTitle("Supervisor / Carga");
+
+  const applySnapshot = useCallback((snapshot) => {
+    setBlasts(snapshot.blasts);
+    setBlastFullById(snapshot.blastFullById);
+    setSelectedBlastId((current) => {
+      if (current && snapshot.blastFullById[current]) {
+        return current;
+      }
+
+      return snapshot.blasts[0]?.id || "";
+    });
+    setLastUpdate(Date.now());
+  }, []);
+
   const selectedBlast = useMemo(
     () => blasts.find((blast) => blast.id === selectedBlastId) ?? null,
     [blasts, selectedBlastId],
   );
+  const selectedBlastFull = useMemo(
+    () => blastFullById[selectedBlastId] ?? null,
+    [blastFullById, selectedBlastId],
+  );
 
   useEffect(() => {
-    let mounted = true;
+    let active = true;
+    let unsubscribe = () => {};
 
-    blastRepository
-      .fetchAllBlasts()
-      .then((data) => {
-        if (!mounted) return;
+    supervisorRepository
+      .fetchLoadingSnapshot()
+      .then((snapshot) => {
+        if (!active) return;
 
-        setBlasts(data);
-        setSelectedBlastId((current) => current || data[0]?.id || "");
-        setLastUpdate(Date.now());
-      })
-      .catch((error) => {
-        console.error("Error loading blasts for supervisor carga:", error);
-      })
-      .finally(() => {
-        if (mounted) setLoadingBlasts(false);
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!selectedBlastId) {
-      setSelectedBlastFull(null);
-      return;
-    }
-
-    let mounted = true;
-    setLoadingDetail(true);
-
-    blastRepository
-      .fetchBlastFullLoading(selectedBlastId)
-      .then((data) => {
-        if (!mounted) return;
-        setSelectedBlastFull(data);
-        setLastUpdate(Date.now());
-      })
-      .catch((error) => {
-        console.error(
-          "Error loading blast detail for supervisor carga:",
-          error,
+        applySnapshot(snapshot);
+        unsubscribe = supervisorRepository.subscribeLoadingSnapshot(
+          (nextSnapshot) => {
+            if (!active) return;
+            applySnapshot(nextSnapshot);
+          },
         );
       })
+      .catch((error) => {
+        console.error("Error loading supervisor carga snapshot:", error);
+      })
       .finally(() => {
-        if (mounted) setLoadingDetail(false);
+        if (!active) return;
+        setLoadingBlasts(false);
+        setLoadingDetail(false);
       });
 
     return () => {
-      mounted = false;
+      active = false;
+      unsubscribe();
     };
-  }, [selectedBlastId]);
+  }, [applySnapshot]);
 
   return (
     <>

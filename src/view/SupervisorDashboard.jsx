@@ -1,26 +1,19 @@
 import { useCallback, useEffect, useState } from "react";
-import {
-  supabase,
-  supabaseReady,
-} from "../infrastructure/supabase/supabaseClient";
-import { SubscriptionManager } from "../infrastructure/supabase/SubscriptionManager";
 import ExportDayModal from "../components/ExportDayModal";
 import KpiCard from "../components/KpiCard";
 import SupervisorHeader from "../components/SupervisorHeader";
 import SupervisorExportAction from "../components/SupervisorExportAction";
 import SupervisorStats from "../components/SupervisorStats";
 import SupervisorTable from "../components/SupervisorTable";
+import { supervisorRepository } from "../di/container";
 import {
   formatDateTime,
   formatTime,
-  getDateKey,
   getBrowserTimeZone,
   getTodayDateKey,
 } from "../lib/datetime";
 import { exportRowsToXlsx } from "../lib/exportXlsx";
 import { usePageTitle } from "../hooks/usePageTitle";
-
-const supervisorSubscriptionManager = new SubscriptionManager();
 
 function sortByRecencyDesc(rows) {
   return [...rows].sort(
@@ -28,61 +21,6 @@ function sortByRecencyDesc(rows) {
       new Date(b.recency || b.updatedAt || b.createdAt || 0) -
       new Date(a.recency || a.updatedAt || a.createdAt || 0),
   );
-}
-
-function mapSupervisorChannelRow(row) {
-  return {
-    drillingId: row.drilling_id,
-    depth: row.depth,
-    ceiling: row.ceiling,
-    floor: row.floor,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-    updatedBy: row.updated_by,
-    holeId: row.hole_id,
-    holeNumber: row.hole_number,
-    blastId: row.blast_id,
-    plannedDepth: row.planned_depth,
-    operatorId: row.operator_id,
-    operatorName: row.operator_name,
-    equipment: row.equipment,
-    shift: row.shift_type,
-    pattern: row.pattern,
-    diameter: row.diameter,
-    elevation: row.elevation,
-    recency: row.recency,
-    date: getDateKey(row.created_at),
-  };
-}
-
-async function fetchLatestSupervisorRows(limit = 50) {
-  const { data, error } = await supabase
-    .from("v_supervisor_holes")
-    .select("*")
-    .order("recency", { ascending: false })
-    .limit(limit);
-
-  if (error) {
-    throw error;
-  }
-
-  return (data || []).map(mapSupervisorChannelRow);
-}
-
-async function fetchSupervisorRowsByDate(date, timeZone) {
-  const { data, error } = await supabase
-    .from("v_supervisor_holes")
-    .select("*")
-    .order("recency", { ascending: false })
-    .limit(5000);
-
-  if (error) {
-    throw error;
-  }
-
-  return (data || [])
-    .map(mapSupervisorChannelRow)
-    .filter((row) => getDateKey(row.createdAt, timeZone) === date);
 }
 
 export default function SupervisorDashboard() {
@@ -98,44 +36,43 @@ export default function SupervisorDashboard() {
 
   usePageTitle("Supervisor / Perforacion");
   const loadDashboardData = useCallback(async () => {
-    const rows = await fetchLatestSupervisorRows(50);
+    const rows = await supervisorRepository.fetchLatestDrillingRows(100);
     setRecentRows(rows);
     setLastUpdate(Date.now());
   }, []);
 
   useEffect(() => {
-    if (!supabaseReady) return;
-
     let active = true;
     let unsubscribe = () => {};
+    const timeoutId = window.setTimeout(() => {
+      loadDashboardData()
+        .then(() => {
+          if (!active) return;
 
-    loadDashboardData()
-      .then(() => {
-        if (!active) return;
-
-        unsubscribe = supervisorSubscriptionManager.subscribeSupervisorRows(
-          { limit: 50, date: selectedDate },
-          () => fetchLatestSupervisorRows(50),
-          (rows) => {
-            if (!active) return;
-            setRecentRows(rows);
-            setLastUpdate(Date.now());
-          },
-        );
-      })
-      .catch((error) => {
-        console.error("Error loading supervisor dashboard:", error);
-      });
+          unsubscribe = supervisorRepository.subscribeDrillingRows(
+            { limit: 100, date: selectedDate },
+            (rows) => {
+              if (!active) return;
+              setRecentRows(rows);
+              setLastUpdate(Date.now());
+            },
+          );
+        })
+        .catch((error) => {
+          console.error("Error loading supervisor dashboard:", error);
+        });
+    }, 0);
 
     return () => {
       active = false;
+      window.clearTimeout(timeoutId);
       unsubscribe();
     };
   }, [loadDashboardData, selectedDate]);
 
-  const latest50Rows = sortByRecencyDesc(recentRows).slice(0, 50);
+  const latest100Rows = sortByRecencyDesc(recentRows).slice(0, 100);
 
-  const filteredRows = latest50Rows.filter((row) => {
+  const filteredRows = latest100Rows.filter((row) => {
     const turnoOk = filtroTurno === "TODOS" || row.shift === filtroTurno;
     const opOk =
       !filtroOp ||
@@ -151,22 +88,22 @@ export default function SupervisorDashboard() {
     )
     .slice(0, 50);
 
-  const totalMetros = latest50Rows.reduce(
+  const totalMetros = latest100Rows.reduce(
     (sum, row) => sum + Number(row.depth || 0),
     0,
   );
-  const promMetros = latest50Rows.length
-    ? totalMetros / latest50Rows.length
+  const promMetros = latest100Rows.length
+    ? totalMetros / latest100Rows.length
     : 0;
   const totalOps = new Set(
-    latest50Rows
+    latest100Rows
       .map((row) => row.operatorName)
       .filter(Boolean)
       .filter((name) => name !== "-"),
   ).size;
 
   const chartOpsData = Object.entries(
-    latest50Rows.reduce((acc, row) => {
+    latest100Rows.reduce((acc, row) => {
       const operator =
         row.operatorName && row.operatorName !== "-"
           ? row.operatorName
@@ -179,7 +116,7 @@ export default function SupervisorDashboard() {
     metros: parseFloat(metros.toFixed(1)),
   }));
 
-  const chartTimeData = [...latest50Rows]
+  const chartTimeData = [...latest100Rows]
     .sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0))
     .reduce((acc, row) => {
       const prev = acc.length ? acc[acc.length - 1].acum : 0;
@@ -198,7 +135,7 @@ export default function SupervisorDashboard() {
       setExportFeedback("");
 
       try {
-        const exportRows = await fetchSupervisorRowsByDate(
+        const exportRows = await supervisorRepository.fetchDrillingRowsByDate(
           selectedExportDate,
           timeZone,
         );
@@ -232,7 +169,7 @@ export default function SupervisorDashboard() {
         }
         lastUpdate={lastUpdate}
         selectedDate={selectedDate}
-        subtitle="Dashboard: ultimos 50 registros"
+        subtitle="Dashboard: ultimos 100 registros"
         title="Supervisor / Perforacion"
       />
 
@@ -242,13 +179,13 @@ export default function SupervisorDashboard() {
             <KpiCard
               label="Metros totales"
               value={totalMetros.toFixed(1)}
-              sub="ultimos 50 registros"
+              sub="ultimos 100 registros"
               color="var(--color-brand-amber)"
             />
             <KpiCard
               label="Barrenos"
-              value={latest50Rows.length}
-              sub="ultimos 50 registros"
+              value={latest100Rows.length}
+              sub="ultimos 100 registros"
               color="var(--color-brand-cyan)"
             />
             <KpiCard
@@ -260,7 +197,7 @@ export default function SupervisorDashboard() {
             <KpiCard
               label="Operadores"
               value={totalOps}
-              sub="en ultimos 50 registros"
+              sub="en ultimos 100 registros"
               color="var(--color-text-muted)"
             />
           </div>
@@ -294,7 +231,7 @@ export default function SupervisorDashboard() {
             <SupervisorStats
               chartOpsData={chartOpsData}
               chartTimeData={chartTimeData}
-              scopeLabel="ultimos 50 registros"
+              scopeLabel="ultimos 100 registros"
             />
           </div>
         </section>
