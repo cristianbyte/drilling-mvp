@@ -405,9 +405,9 @@ export class SupabaseHoleRepository implements IHoleRepository {
     >,
     updatedBy: string,
   ): Promise<void> {
-    for (const row of rows) {
-      await this.upsertLoading(
-        row.holeId,
+    const payload = rows.map((row) => ({
+      hole_id: row.holeId,
+      ...this.mapLoadingToDb(
         {
           plannedDepth: row.plannedDepth,
           plannedEmulsion: row.plannedEmulsion,
@@ -415,7 +415,20 @@ export class SupabaseHoleRepository implements IHoleRepository {
           plannedStemmingFinal: row.plannedStemmingFinal,
         },
         updatedBy,
-      );
+      ),
+    }));
+
+    if (payload.length === 0) {
+      return;
+    }
+
+    const { error } = await supabase
+      .from("hole_loading")
+      .upsert(payload, { onConflict: "hole_id" });
+
+    if (error) {
+      console.error("Error bulk upserting loading plan:", error);
+      throw error;
     }
   }
 

@@ -42,6 +42,7 @@ function buildInitialState() {
     canLoad: false,
     imported: false,
     busy: false,
+    progress: 0,
     rows: [],
   };
 }
@@ -76,6 +77,14 @@ function FieldCard({ label, value, ready = false }) {
 export default function SupervisorCargaUploadTab() {
   const [state, setState] = useState(buildInitialState);
   const fileInputRef = useRef(null);
+
+  function setLoadingStep(progress, status) {
+    setState((current) => ({
+      ...current,
+      progress,
+      status,
+    }));
+  }
 
   async function handleFileChange(file) {
     if (!file) {
@@ -162,6 +171,7 @@ export default function SupervisorCargaUploadTab() {
         canLoad: true,
         imported: false,
         busy: false,
+        progress: 0,
         rows,
       });
     } catch (error) {
@@ -189,10 +199,11 @@ export default function SupervisorCargaUploadTab() {
 
     setState((current) => ({
       ...current,
-      status: "Cargando datos...",
+      status: "Enviando datos...",
       error: "",
       busy: true,
       canLoad: false,
+      progress: 0,
     }));
 
     try {
@@ -205,12 +216,18 @@ export default function SupervisorCargaUploadTab() {
         throw new Error("No se pudo resolver la voladura.");
       }
 
-      const holes = await holeRepository.upsertHoles(
+      setLoadingStep(25, "Voladura resuelta.");
+
+      await holeRepository.upsertHoles(
         blastId,
         state.rows.map((row) => row.holeNumber),
       );
 
-      if (holes.length !== state.rows.length) {
+      setLoadingStep(50, "Barrenos resueltos.");
+
+      const holes = await holeRepository.fetchHolesByBlast(blastId);
+
+      if (holes.length < state.rows.length) {
         throw new Error("No se pudieron resolver todos los barrenos.");
       }
 
@@ -218,19 +235,31 @@ export default function SupervisorCargaUploadTab() {
         holes.map((hole) => [hole.holeNumber, hole.id]),
       );
 
-      await holeRepository.upsertLoadingPlan(
-        state.rows.map((row) => ({
-          holeId: holeIdByNumber.get(row.holeNumber),
+      const loadingRows = state.rows.map((row) => {
+        const holeId = holeIdByNumber.get(row.holeNumber);
+
+        if (!holeId) {
+          throw new Error(
+            `No se pudo relacionar el barreno ${row.holeNumber} con la voladura.`,
+          );
+        }
+
+        return {
+          holeId,
           plannedDepth: row.plannedDepth,
           plannedEmulsion: row.plannedEmulsion,
           plannedStemmingInitial: row.plannedStemmingInitial,
           plannedStemmingFinal: row.plannedStemmingFinal,
-        })),
-        "SUPERVISOR EXCEL",
-      );
+        };
+      });
+
+      setLoadingStep(75, "Datos relacionados. Enviando plan de carga...");
+
+      await holeRepository.upsertLoadingPlan(loadingRows, "SUPERVISOR EXCEL");
 
       setState((current) => ({
         ...current,
+        progress: 100,
         status: `Carga confirmada: ${current.totalCells} datos.`,
         imported: true,
         busy: false,
@@ -242,7 +271,9 @@ export default function SupervisorCargaUploadTab() {
         ...current,
         status: "Error de carga",
         error:
-          error instanceof Error ? error.message : "No se pudo cargar el archivo.",
+          error instanceof Error
+            ? error.message
+            : "No se pudo cargar el archivo.",
         busy: false,
         canLoad: true,
       }));
@@ -256,6 +287,7 @@ export default function SupervisorCargaUploadTab() {
   ];
   const hasError = Boolean(state.error);
   const hasData = state.canLoad;
+  const isUploading = state.busy && state.progress > 0;
   const actionLabel = state.imported
     ? "Cargado"
     : state.canLoad
@@ -287,6 +319,20 @@ export default function SupervisorCargaUploadTab() {
               {state.error}
             </div>
           ) : null}
+          {isUploading ? (
+            <div className="mt-3">
+              <div className="mb-1 flex items-center justify-between font-mono text-[0.68rem] uppercase tracking-[0.08em] text-(--color-text-faint)">
+                <span>Progreso</span>
+                <span>{state.progress}%</span>
+              </div>
+              <div className="h-5 overflow-hidden rounded-full border border-(--color-border-subtle) bg-(--color-surface-1)">
+                <div
+                  className="progress-stripes h-full transition-all duration-300"
+                  style={{ width: `${state.progress}%` }}
+                />
+              </div>
+            </div>
+          ) : null}
           {state.imported ? (
             <div className="mt-3 rounded-(--radius-card) border border-(--color-brand-emerald) bg-(--color-brand-emerald-dim) px-3 py-2.5 font-mono text-[0.72rem] text-(--color-brand-emerald)">
               Carga completada.
@@ -294,21 +340,23 @@ export default function SupervisorCargaUploadTab() {
           ) : null}
         </div>
         <div className="flex flex-col gap-3 border-(--color-border-subtle) items-center justify-center">
-        <button
-          type="button"
-          className="btn-primary"
-          onClick={handleAction}
-          disabled={state.imported || state.busy}
-        >
-          {actionLabel}
-        </button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-          className="hidden"
-          onChange={(event) => handleFileChange(event.target.files?.[0] ?? null)}
-        />
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={handleAction}
+            disabled={state.imported || state.busy}
+          >
+            {actionLabel}
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            className="hidden"
+            onChange={(event) =>
+              handleFileChange(event.target.files?.[0] ?? null)
+            }
+          />
 
           <div className="w-full font-mono text-[0.72rem] uppercase tracking-[0.08em] text-(--color-text-faint)">
             {state.fileName || "Sin archivo"}
