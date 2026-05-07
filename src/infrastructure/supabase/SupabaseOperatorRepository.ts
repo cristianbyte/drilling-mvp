@@ -1,5 +1,6 @@
 import { Operator } from "../../core/entities/entities";
 import { IOperatorRepository } from "../../core/interfaces/IOperatorRepository";
+import { toThreeDecimals } from "./numberFormat";
 import { supabase } from "./supabaseClient";
 
 type DbOperatorRow = {
@@ -22,9 +23,9 @@ export class SupabaseOperatorRepository implements IOperatorRepository {
       shiftType: row.shift_type,
       equipment: row.equipment,
       date: row.date,
-      elevation: row.elevation,
+      elevation: toThreeDecimals(row.elevation),
       pattern: row.pattern,
-      diameter: row.diameter,
+      diameter: toThreeDecimals(row.diameter),
       createdAt: row.created_at,
     };
   }
@@ -35,9 +36,9 @@ export class SupabaseOperatorRepository implements IOperatorRepository {
       shift_type: data.shiftType,
       equipment: data.equipment,
       date: data.date,
-      elevation: data.elevation,
+      elevation: toThreeDecimals(data.elevation),
       pattern: data.pattern,
-      diameter: data.diameter,
+      diameter: toThreeDecimals(data.diameter),
     };
   }
 

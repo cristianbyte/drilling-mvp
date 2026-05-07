@@ -7,6 +7,7 @@ import {
   Operator,
 } from "../../core/entities/entities";
 import { IHoleRepository } from "../../core/interfaces/IHoleRepository";
+import { toThreeDecimals } from "./numberFormat";
 import { SubscriptionManager } from "./SubscriptionManager";
 
 type DbOperatorRow = {
@@ -91,9 +92,9 @@ export class SupabaseHoleRepository implements IHoleRepository {
       shiftType: row.shift_type,
       equipment: row.equipment,
       date: row.date,
-      elevation: row.elevation,
+      elevation: toThreeDecimals(row.elevation),
       pattern: row.pattern,
-      diameter: row.diameter,
+      diameter: toThreeDecimals(row.diameter),
       createdAt: row.created_at,
     };
   }
@@ -123,9 +124,9 @@ export class SupabaseHoleRepository implements IHoleRepository {
               id: drillingRow.id,
               holeId: drillingRow.hole_id,
               operatorId: drillingRow.operator_id,
-              depth: drillingRow.depth,
-              ceiling: drillingRow.ceiling,
-              floor: drillingRow.floor,
+              depth: toThreeDecimals(drillingRow.depth),
+              ceiling: toThreeDecimals(drillingRow.ceiling),
+              floor: toThreeDecimals(drillingRow.floor),
               createdAt: drillingRow.created_at,
               updatedAt: drillingRow.updated_at,
               updatedBy: drillingRow.updated_by,
@@ -138,14 +139,18 @@ export class SupabaseHoleRepository implements IHoleRepository {
               id: loadingRow.id,
               holeId: loadingRow.hole_id,
               leaderId: loadingRow.leader_id,
-              plannedDepth: loadingRow.planned_depth,
-              plannedEmulsion: loadingRow.planned_emulsion,
-              plannedStemmingInitial: loadingRow.planned_stemming_initial,
-              plannedStemmingFinal: loadingRow.planned_stemming_final,
-              leveling: loadingRow.leveling,
-              deck: loadingRow.deck,
-              emulsionTotal: loadingRow.emulsion_total,
-              stemmingFinal: loadingRow.stemming_final,
+              plannedDepth: toThreeDecimals(loadingRow.planned_depth),
+              plannedEmulsion: toThreeDecimals(loadingRow.planned_emulsion),
+              plannedStemmingInitial: toThreeDecimals(
+                loadingRow.planned_stemming_initial,
+              ),
+              plannedStemmingFinal: toThreeDecimals(
+                loadingRow.planned_stemming_final,
+              ),
+              leveling: toThreeDecimals(loadingRow.leveling),
+              deck: toThreeDecimals(loadingRow.deck),
+              emulsionTotal: toThreeDecimals(loadingRow.emulsion_total),
+              stemmingFinal: toThreeDecimals(loadingRow.stemming_final),
               createdAt: loadingRow.created_at,
               updatedAt: loadingRow.updated_at,
               updatedBy: loadingRow.updated_by,
@@ -167,13 +172,13 @@ export class SupabaseHoleRepository implements IHoleRepository {
     };
 
     if (data.depth !== undefined) {
-      mapped.depth = data.depth;
+      mapped.depth = toThreeDecimals(data.depth);
     }
     if (data.ceiling !== undefined) {
-      mapped.ceiling = data.ceiling;
+      mapped.ceiling = toThreeDecimals(data.ceiling);
     }
     if (data.floor !== undefined) {
-      mapped.floor = data.floor;
+      mapped.floor = toThreeDecimals(data.floor);
     }
 
     return mapped;
@@ -197,28 +202,30 @@ export class SupabaseHoleRepository implements IHoleRepository {
     }
 
     if (data.plannedDepth !== undefined) {
-      mapped.planned_depth = data.plannedDepth;
+      mapped.planned_depth = toThreeDecimals(data.plannedDepth);
     }
     if (data.plannedEmulsion !== undefined) {
-      mapped.planned_emulsion = data.plannedEmulsion;
+      mapped.planned_emulsion = toThreeDecimals(data.plannedEmulsion);
     }
     if (data.plannedStemmingInitial !== undefined) {
-      mapped.planned_stemming_initial = data.plannedStemmingInitial;
+      mapped.planned_stemming_initial = toThreeDecimals(
+        data.plannedStemmingInitial,
+      );
     }
     if (data.plannedStemmingFinal !== undefined) {
-      mapped.planned_stemming_final = data.plannedStemmingFinal;
+      mapped.planned_stemming_final = toThreeDecimals(data.plannedStemmingFinal);
     }
     if (data.leveling !== undefined) {
-      mapped.leveling = data.leveling;
+      mapped.leveling = toThreeDecimals(data.leveling);
     }
     if (data.deck !== undefined) {
-      mapped.deck = data.deck;
+      mapped.deck = toThreeDecimals(data.deck);
     }
     if (data.emulsionTotal !== undefined) {
-      mapped.emulsion_total = data.emulsionTotal;
+      mapped.emulsion_total = toThreeDecimals(data.emulsionTotal);
     }
     if (data.stemmingFinal !== undefined) {
-      mapped.stemming_final = data.stemmingFinal;
+      mapped.stemming_final = toThreeDecimals(data.stemmingFinal);
     }
 
     return mapped;

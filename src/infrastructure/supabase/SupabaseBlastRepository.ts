@@ -8,6 +8,7 @@ import {
   SiteEnum,
 } from "../../core/entities/entities";
 import { IBlastRepository } from "../../core/interfaces/IBlastRepository";
+import { toThreeDecimals } from "./numberFormat";
 
 type DbBlastRow = {
   id: string;
@@ -104,9 +105,9 @@ export class SupabaseBlastRepository implements IBlastRepository {
       shiftType: row.shift_type,
       equipment: row.equipment,
       date: row.date,
-      elevation: row.elevation,
+      elevation: toThreeDecimals(row.elevation),
       pattern: row.pattern,
-      diameter: row.diameter,
+      diameter: toThreeDecimals(row.diameter),
       createdAt: row.created_at,
     };
   }
@@ -124,11 +125,11 @@ export class SupabaseBlastRepository implements IBlastRepository {
       id: row.id,
       blastCode: row.blast_code,
       location: row.location,
-      sample_1: row.sample_1,
-      sample_2: row.sample_2,
-      sample_3: row.sample_3,
-      sample_4: row.sample_4,
-      final_weight: row.final_weight,
+      sample_1: toThreeDecimals(row.sample_1),
+      sample_2: toThreeDecimals(row.sample_2),
+      sample_3: toThreeDecimals(row.sample_3),
+      sample_4: toThreeDecimals(row.sample_4),
+      final_weight: toThreeDecimals(row.final_weight),
       densityComplete: row.density_complete,
       isComplete: row.is_complete,
       completedAt: row.completed_at,
@@ -151,34 +152,38 @@ export class SupabaseBlastRepository implements IBlastRepository {
       createdAt: row.created_at,
       drilling: drillingRow
         ? {
-            id: drillingRow.id,
-            holeId: drillingRow.hole_id,
-            operatorId: drillingRow.operator_id,
-            depth: drillingRow.depth,
-            ceiling: drillingRow.ceiling,
-            floor: drillingRow.floor,
-            createdAt: drillingRow.created_at,
-            updatedAt: drillingRow.updated_at,
-            updatedBy: drillingRow.updated_by,
+              id: drillingRow.id,
+              holeId: drillingRow.hole_id,
+              operatorId: drillingRow.operator_id,
+              depth: toThreeDecimals(drillingRow.depth),
+              ceiling: toThreeDecimals(drillingRow.ceiling),
+              floor: toThreeDecimals(drillingRow.floor),
+              createdAt: drillingRow.created_at,
+              updatedAt: drillingRow.updated_at,
+              updatedBy: drillingRow.updated_by,
             operator: operatorRow ? this.mapOperatorFromDb(operatorRow) : null,
           }
         : null,
       loading: loadingRow
         ? {
-            id: loadingRow.id,
-            holeId: loadingRow.hole_id,
-            leaderId: loadingRow.leader_id,
-            plannedDepth: loadingRow.planned_depth,
-            plannedEmulsion: loadingRow.planned_emulsion,
-            plannedStemmingInitial: loadingRow.planned_stemming_initial,
-            plannedStemmingFinal: loadingRow.planned_stemming_final,
-            leveling: loadingRow.leveling,
-            deck: loadingRow.deck,
-            emulsionTotal: loadingRow.emulsion_total,
-            stemmingFinal: loadingRow.stemming_final,
-            createdAt: loadingRow.created_at,
-            updatedAt: loadingRow.updated_at,
-            updatedBy: loadingRow.updated_by,
+              id: loadingRow.id,
+              holeId: loadingRow.hole_id,
+              leaderId: loadingRow.leader_id,
+              plannedDepth: toThreeDecimals(loadingRow.planned_depth),
+              plannedEmulsion: toThreeDecimals(loadingRow.planned_emulsion),
+              plannedStemmingInitial: toThreeDecimals(
+                loadingRow.planned_stemming_initial,
+              ),
+              plannedStemmingFinal: toThreeDecimals(
+                loadingRow.planned_stemming_final,
+              ),
+              leveling: toThreeDecimals(loadingRow.leveling),
+              deck: toThreeDecimals(loadingRow.deck),
+              emulsionTotal: toThreeDecimals(loadingRow.emulsion_total),
+              stemmingFinal: toThreeDecimals(loadingRow.stemming_final),
+              createdAt: loadingRow.created_at,
+              updatedAt: loadingRow.updated_at,
+              updatedBy: loadingRow.updated_by,
             leader: leaderRow ? this.mapLeaderFromDb(leaderRow) : null,
           }
         : null,
@@ -480,11 +485,11 @@ export class SupabaseBlastRepository implements IBlastRepository {
     const { error } = await supabase
       .from("blasts")
       .update({
-        sample_1: patch.sample_1,
-        sample_2: patch.sample_2,
-        sample_3: patch.sample_3,
-        sample_4: patch.sample_4,
-        final_weight: patch.final_weight,
+        sample_1: toThreeDecimals(patch.sample_1),
+        sample_2: toThreeDecimals(patch.sample_2),
+        sample_3: toThreeDecimals(patch.sample_3),
+        sample_4: toThreeDecimals(patch.sample_4),
+        final_weight: toThreeDecimals(patch.final_weight),
         updated_by: updatedBy,
       })
       .eq("id", blastId);

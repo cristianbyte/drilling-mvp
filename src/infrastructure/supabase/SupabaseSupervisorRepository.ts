@@ -9,6 +9,7 @@ import {
   SupervisorDrillingRow,
   SupervisorLoadingSnapshot,
 } from "../../core/interfaces/ISupervisorRepository";
+import { parseDbNumber, toThreeDecimals } from "./numberFormat";
 import { SubscriptionManager } from "./SubscriptionManager";
 import { supabase, supabaseReady } from "./supabaseClient";
 
@@ -119,12 +120,7 @@ export class SupabaseSupervisorRepository implements ISupervisorRepository {
 
   private readNumber(row: DbSupervisorLoadingRow, keys: string[]) {
     const value = this.pickValue(row, keys);
-    if (value === null || value === "") {
-      return null;
-    }
-
-    const normalized = Number(value);
-    return Number.isNaN(normalized) ? null : normalized;
+    return parseDbNumber(value);
   }
 
   private readBoolean(row: DbSupervisorLoadingRow, keys: string[]) {
@@ -156,23 +152,23 @@ export class SupabaseSupervisorRepository implements ISupervisorRepository {
   ): SupervisorDrillingRow {
     return {
       drillingId: row.drilling_id,
-      depth: row.depth,
-      ceiling: row.ceiling,
-      floor: row.floor,
+      depth: toThreeDecimals(row.depth),
+      ceiling: toThreeDecimals(row.ceiling),
+      floor: toThreeDecimals(row.floor),
       createdAt: row.created_at,
       updatedAt: row.updated_at,
       updatedBy: row.updated_by,
       holeId: row.hole_id,
-      holeNumber: row.hole_number,
+      holeNumber: toThreeDecimals(row.hole_number),
       blastId: row.blast_id,
-      plannedDepth: row.planned_depth,
+      plannedDepth: toThreeDecimals(row.planned_depth),
       operatorId: row.operator_id,
       operatorName: row.operator_name,
       equipment: row.equipment,
       shift: row.shift_type,
       pattern: row.pattern,
-      diameter: row.diameter,
-      elevation: row.elevation,
+      diameter: toThreeDecimals(row.diameter),
+      elevation: toThreeDecimals(row.elevation),
       recency: row.recency,
       date: row.created_at ? getDateKey(row.created_at) : null,
     };
@@ -234,11 +230,11 @@ export class SupabaseSupervisorRepository implements ISupervisorRepository {
       id: row.id,
       blastCode: row.blast_code,
       location: row.location,
-      sample_1: row.sample_1,
-      sample_2: row.sample_2,
-      sample_3: row.sample_3,
-      sample_4: row.sample_4,
-      final_weight: row.final_weight,
+      sample_1: toThreeDecimals(row.sample_1),
+      sample_2: toThreeDecimals(row.sample_2),
+      sample_3: toThreeDecimals(row.sample_3),
+      sample_4: toThreeDecimals(row.sample_4),
+      final_weight: toThreeDecimals(row.final_weight),
       densityComplete: row.density_complete,
       isComplete: row.is_complete,
       completedAt: row.completed_at,
