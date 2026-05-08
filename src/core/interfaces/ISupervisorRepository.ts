@@ -11,6 +11,8 @@ export interface SupervisorDrillingRow {
   holeId: string | null;
   holeNumber: number | null;
   blastId: string | null;
+  blastCode: string | null;
+  location: string | null;
   plannedDepth: number | null;
   operatorId: string | null;
   operatorName: string | null;
@@ -21,6 +23,11 @@ export interface SupervisorDrillingRow {
   elevation: number | null;
   recency: string | null;
   date: string | null;
+}
+
+export interface SupervisorDrillingSnapshot {
+  blasts: Blast[];
+  drillingRowsByBlastId: Record<string, SupervisorDrillingRow[]>;
 }
 
 export interface SupervisorLoadingSnapshot {
@@ -34,9 +41,13 @@ export interface ISupervisorRepository {
     date: string,
     timeZone?: string,
   ): Promise<SupervisorDrillingRow[]>;
+  fetchDrillingSnapshot(): Promise<SupervisorDrillingSnapshot>;
   subscribeDrillingRows(
     options: { limit?: number; date?: string },
     cb: (data: SupervisorDrillingRow[]) => void,
+  ): () => void;
+  subscribeDrillingSnapshot(
+    cb: (data: SupervisorDrillingSnapshot) => void,
   ): () => void;
   fetchLoadingSnapshot(): Promise<SupervisorLoadingSnapshot>;
   subscribeLoadingSnapshot(

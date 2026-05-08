@@ -7,6 +7,7 @@ import {
 import {
   ISupervisorRepository,
   SupervisorDrillingRow,
+  SupervisorDrillingSnapshot,
   SupervisorLoadingSnapshot,
 } from "../../core/interfaces/ISupervisorRepository";
 import { parseDbNumber, toThreeDecimals } from "./numberFormat";
@@ -31,6 +32,24 @@ function normalizeText(value: string | null | undefined) {
     .toUpperCase();
 }
 
+function getLatestTimestamp(...values: Array<string | null | undefined>) {
+  return values
+    .filter(Boolean)
+    .reduce<string | null>((latest, current) => {
+      if (!current) {
+        return latest;
+      }
+
+      if (!latest) {
+        return current;
+      }
+
+      return new Date(current).getTime() > new Date(latest).getTime()
+        ? current
+        : latest;
+    }, null);
+}
+
 type DbSupervisorDrillingRow = {
   drilling_id: string | null;
   depth: number | null;
@@ -42,6 +61,8 @@ type DbSupervisorDrillingRow = {
   hole_id: string | null;
   hole_number: number | null;
   blast_id: string | null;
+  blast_code: string | null;
+  location: SiteEnum | null;
   planned_depth: number | null;
   operator_id: string | null;
   operator_name: string | null;
@@ -68,6 +89,48 @@ type DbBlastRow = {
   created_at: string;
   updated_at: string | null;
   updated_by: string | null;
+};
+
+type DbOperatorRow = {
+  id: string;
+  name: string;
+  shift_type: string | null;
+  equipment: string | null;
+  pattern: string | null;
+  diameter: number | null;
+  elevation: number | null;
+};
+
+type DbHoleDrillingJoinedRow = {
+  id: string;
+  hole_id: string;
+  operator_id: string | null;
+  depth: number | null;
+  ceiling: number | null;
+  floor: number | null;
+  created_at: string | null;
+  updated_at: string | null;
+  updated_by: string | null;
+  operators: DbOperatorRow | DbOperatorRow[] | null;
+};
+
+type DbHoleLoadingPreviewRow = {
+  planned_depth: number | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+type DbDrillingSnapshotHoleRow = {
+  id: string;
+  blast_id: string;
+  hole_number: number | null;
+  created_at: string | null;
+  hole_drilling: DbHoleDrillingJoinedRow | DbHoleDrillingJoinedRow[] | null;
+  hole_loading: DbHoleLoadingPreviewRow | DbHoleLoadingPreviewRow[] | null;
+};
+
+type DbDrillingSnapshotBlastRow = DbBlastRow & {
+  holes: DbDrillingSnapshotHoleRow[] | null;
 };
 
 type DbSupervisorLoadingRow = Record<string, unknown>;
@@ -97,6 +160,14 @@ type SupervisorLoadingViewRow = {
 const supervisorSubscriptionManager = new SubscriptionManager();
 
 export class SupabaseSupervisorRepository implements ISupervisorRepository {
+  private getRelationOne<T>(value: T | T[] | null | undefined): T | null {
+    if (Array.isArray(value)) {
+      return value[0] ?? null;
+    }
+
+    return value ?? null;
+  }
+
   private pickValue(row: DbSupervisorLoadingRow, keys: string[]) {
     for (const key of keys) {
       const value = row[key];
@@ -161,6 +232,8 @@ export class SupabaseSupervisorRepository implements ISupervisorRepository {
       holeId: row.hole_id,
       holeNumber: toThreeDecimals(row.hole_number),
       blastId: row.blast_id,
+      blastCode: row.blast_code,
+      location: row.location,
       plannedDepth: toThreeDecimals(row.planned_depth),
       operatorId: row.operator_id,
       operatorName: row.operator_name,
@@ -249,6 +322,86 @@ export class SupabaseSupervisorRepository implements ISupervisorRepository {
       blasts: [],
       blastFullById: {},
     };
+  }
+
+  private buildEmptyDrillingSnapshot(): SupervisorDrillingSnapshot {
+    return {
+      blasts: [],
+      drillingRowsByBlastId: {},
+    };
+  }
+
+  private mapDrillingSnapshot(
+    blastsRows: DbDrillingSnapshotBlastRow[],
+  ): SupervisorDrillingSnapshot {
+    const grouped = blastsRows.map((blastRow) => {
+      const blast = this.mapBlastFromDb(blastRow);
+      const drillingRows = ((blastRow.holes ?? []) as DbDrillingSnapshotHoleRow[])
+        .map((holeRow) => {
+          const drillingRow = this.getRelationOne(holeRow.hole_drilling);
+          const loadingRow = this.getRelationOne(holeRow.hole_loading);
+          const operatorRow = this.getRelationOne(drillingRow?.operators);
+          const recency = getLatestTimestamp(
+            drillingRow?.updated_at,
+            drillingRow?.created_at,
+            loadingRow?.updated_at,
+            loadingRow?.created_at,
+            holeRow.created_at,
+            blast.createdAt,
+          );
+
+          return {
+            drillingId: drillingRow?.id || null,
+            depth: toThreeDecimals(drillingRow?.depth ?? null),
+            ceiling: toThreeDecimals(drillingRow?.ceiling ?? null),
+            floor: toThreeDecimals(drillingRow?.floor ?? null),
+            createdAt: drillingRow?.created_at || holeRow.created_at,
+            updatedAt: drillingRow?.updated_at || null,
+            updatedBy: drillingRow?.updated_by || null,
+            holeId: holeRow.id,
+            holeNumber: toThreeDecimals(holeRow.hole_number),
+            blastId: blast.id,
+            blastCode: blast.blastCode,
+            location: blast.location,
+            plannedDepth: toThreeDecimals(loadingRow?.planned_depth ?? null),
+            operatorId: drillingRow?.operator_id || null,
+            operatorName: operatorRow?.name || null,
+            equipment: operatorRow?.equipment || null,
+            shift: operatorRow?.shift_type || null,
+            pattern: operatorRow?.pattern || null,
+            diameter: toThreeDecimals(operatorRow?.diameter ?? null),
+            elevation: toThreeDecimals(operatorRow?.elevation ?? null),
+            recency,
+            date: recency ? getDateKey(recency) : null,
+          } satisfies SupervisorDrillingRow;
+        })
+        .sort(
+          (a, b) =>
+            new Date(b.recency || b.updatedAt || b.createdAt || 0).getTime() -
+            new Date(a.recency || a.updatedAt || a.createdAt || 0).getTime(),
+        );
+
+      return {
+        blast,
+        rows: drillingRows,
+        latestRecency: new Date(
+          drillingRows[0]?.recency || blast.updatedAt || blast.createdAt || 0,
+        ).getTime(),
+      };
+    });
+
+    grouped.sort((a, b) => b.latestRecency - a.latestRecency);
+
+    const blasts = grouped.map(({ blast }) => blast);
+
+    const drillingRowsByBlastId = Object.fromEntries(
+      grouped.map(({ blast, rows }) => [blast.id, rows]),
+    );
+
+    return {
+      blasts,
+      drillingRowsByBlastId,
+    } satisfies SupervisorDrillingSnapshot;
   }
 
   private mapLoadingSnapshot(
@@ -409,10 +562,48 @@ export class SupabaseSupervisorRepository implements ISupervisorRepository {
     date: string,
     timeZone?: string,
   ): Promise<SupervisorDrillingRow[]> {
-    const rows = await this.fetchLatestDrillingRows(100);
+    if (!supabaseReady) {
+      return [];
+    }
+
+    const { data, error } = await supabase
+      .from("v_supervisor_holes")
+      .select("*")
+      .order("recency", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching supervisor drilling rows by date:", error);
+      return [];
+    }
+
+    const rows = (data || []).map((row) =>
+      this.mapSupervisorDrillingRow(row as DbSupervisorDrillingRow),
+    );
 
     return rows.filter(
       (row) => row.createdAt && getDateKey(row.createdAt, timeZone) === date,
+    );
+  }
+
+  async fetchDrillingSnapshot(): Promise<SupervisorDrillingSnapshot> {
+    if (!supabaseReady) {
+      return this.buildEmptyDrillingSnapshot();
+    }
+
+    const { data, error } = await supabase
+      .from("blasts")
+      .select(
+        "*, holes(*, hole_drilling(*, operators(id, name, shift_type, equipment, pattern, diameter, elevation)), hole_loading(planned_depth, created_at, updated_at))",
+      )
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching supervisor drilling snapshot:", error);
+      return this.buildEmptyDrillingSnapshot();
+    }
+
+    return this.mapDrillingSnapshot(
+      (data || []) as DbDrillingSnapshotBlastRow[],
     );
   }
 
@@ -427,6 +618,20 @@ export class SupabaseSupervisorRepository implements ISupervisorRepository {
     return supervisorSubscriptionManager.subscribeSupervisorRows(
       options,
       () => this.fetchLatestDrillingRows(options.limit ?? 100),
+      cb,
+    );
+  }
+
+  subscribeDrillingSnapshot(
+    cb: (data: SupervisorDrillingSnapshot) => void,
+  ): () => void {
+    if (!supabaseReady) {
+      return () => {};
+    }
+
+    return supervisorSubscriptionManager.subscribeSupervisorRows(
+      {},
+      () => this.fetchDrillingSnapshot(),
       cb,
     );
   }

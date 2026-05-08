@@ -44,10 +44,10 @@ export class SubscriptionManager {
     };
   }
 
-  subscribeSupervisorRows(
+  subscribeSupervisorRows<T>(
     options: { limit?: number; date?: string },
-    fetchFn: () => Promise<any[]>,
-    callback: (data: any[]) => void,
+    fetchFn: () => Promise<T>,
+    callback: (data: T) => void,
   ): () => void {
     const channelName = `supervisor-rows:${options?.date ?? "recent"}:${options?.limit ?? "all"}`;
 

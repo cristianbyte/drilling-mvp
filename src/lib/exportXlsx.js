@@ -7,9 +7,8 @@ const COLUMN_CONFIG = [
   ["Fecha", (row) => row.date || getDateKey(row.createdAt)],
   ["Turno", (row) => row.shift || EMPTY],
   ["Operador", (row) => row.operatorName || EMPTY],
-  ["ID operador", (row) => row.operatorId || EMPTY],
   ["Equipo", (row) => row.equipment || EMPTY],
-  ["ID voladura", (row) => row.blastId || EMPTY],
+  ["voladura", (row) => row.blastCode || EMPTY],
   ["Patron", (row) => row.pattern || EMPTY],
   ["Diametro", (row) => formatNumber(row.diameter)],
   ["Cota (m)", (row) => formatNumber(row.elevation)],
@@ -22,7 +21,6 @@ const COLUMN_CONFIG = [
   ["Recencia", (row) => formatDateTime(row.recency)],
   ["Actualizado por", (row) => row.updatedBy || EMPTY],
   ["Actualizado en", (row) => formatDateTime(row.updatedAt)],
-  ["ID perforacion", (row) => row.drillingId || EMPTY],
   ["ID barreno", (row) => row.holeId || EMPTY],
 ];
 
