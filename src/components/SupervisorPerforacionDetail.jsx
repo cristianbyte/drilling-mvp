@@ -110,11 +110,11 @@ function formatMeters(value) {
 
 function MetricCard({ label, value }) {
   return (
-    <div className="rounded-[0.75rem] border border-(--color-border-subtle) bg-(--color-surface-base) px-4 py-3">
+    <div className="rounded-xl border border-(--color-border-subtle) bg-(--color-surface-base) px-3 py-3">
       <p className="font-(--font-mono) text-[0.6rem] uppercase tracking-[0.14em] text-(--color-text-muted)">
         {label}
       </p>
-      <p className="mt-2 text-sm text-(--color-text-primary)">{value}</p>
+      <p className="mt-0 text-sm text-(--color-text-primary) ">{value}</p>
     </div>
   );
 }
@@ -191,6 +191,10 @@ export default function SupervisorPerforacionDetail({
     );
   }
 
+  let progress = filteredRows.filter(
+    (row) => Number(row.depth || 0) > 0,
+  ).length;
+
   return (
     <section className="section-card w-full min-w-0 overflow-hidden">
       <div className="section-header">
@@ -200,15 +204,19 @@ export default function SupervisorPerforacionDetail({
 
       <div className="space-y-4 p-4 sm:p-5">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <MetricCard label="Voladura" value={blast.blastCode} />
-          <MetricCard label="Ubicacion" value={blast.location} />
+          <MetricCard
+            label="Voladura"
+            value={`${blast.blastCode} - ${blast.location}`}
+          />
           <MetricCard
             label="Barrenos perforados"
-            value={
-              filteredRows.filter((row) => Number(row.depth || 0) > 0).length
-            }
+            value={`${progress} / ${filteredRows.length}`}
           />
           <MetricCard label="Metros totales" value={totalMetros.toFixed(1)} />
+          <MetricCard
+            label="Avance"
+            value={`${((progress / filteredRows.length) * 100).toFixed(1)}%`}
+          />
         </div>
 
         <div
