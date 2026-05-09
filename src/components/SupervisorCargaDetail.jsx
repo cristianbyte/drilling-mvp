@@ -236,13 +236,13 @@ export default function SupervisorCargaDetail({ blastFull, loading }) {
             <thead className="bg-(--color-surface-base)">
               <tr>
                 {[
-                  "Barreno",
+                  "Pozo",
                   "Lider",
                   "Prof. D.",
                   "Emul. T. D.",
                   "Nivelacion",
                   "Deck",
-                  "Emulsion total",
+                  "Emulsion T.",
                   "Ret. F. Real",
                 ].map((label) => (
                   <th

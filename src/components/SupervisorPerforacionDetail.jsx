@@ -147,7 +147,9 @@ export default function SupervisorPerforacionDetail({
     () => filteredRows.reduce((sum, row) => sum + Number(row.depth || 0), 0),
     [filteredRows],
   );
-  const promMetros = filteredRows.length ? totalMetros / filteredRows.length : 0;
+  const promMetros = filteredRows.length
+    ? totalMetros / filteredRows.length
+    : 0;
   const totalOps = new Set(
     filteredRows
       .map((row) => row.operatorName)
@@ -197,15 +199,16 @@ export default function SupervisorPerforacionDetail({
       </div>
 
       <div className="space-y-4 p-4 sm:p-5">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <MetricCard label="Voladura" value={blast.blastCode} />
           <MetricCard label="Ubicacion" value={blast.location} />
-          <MetricCard label="Barrenos" value={filteredRows.length} />
-          <MetricCard label="Metros totales" value={totalMetros.toFixed(1)} />
           <MetricCard
-            label="Prof. promedio"
-            value={filteredRows.length ? promMetros.toFixed(1) : "-"}
+            label="Barrenos perforados"
+            value={
+              filteredRows.filter((row) => Number(row.depth || 0) > 0).length
+            }
           />
+          <MetricCard label="Metros totales" value={totalMetros.toFixed(1)} />
         </div>
 
         <div
