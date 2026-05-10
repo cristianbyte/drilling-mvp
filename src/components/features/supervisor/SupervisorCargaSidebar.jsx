@@ -11,7 +11,7 @@ export default function SupervisorCargaSidebar({
         <span className="section-title">Voladuras</span>
       </div>
 
-      <div className="max-h-[20rem] overflow-y-auto p-3 lg:max-h-[calc(100vh-10rem)]">
+      <div className="h-[20vh] overflow-y-auto p-3 lg:h-auto lg:max-h-[calc(100vh-10rem)]">
         {loading ? (
           <div className="rounded-[0.75rem] border border-dashed border-(--color-border-default) bg-(--color-surface-base) px-4 py-8 text-center font-(--font-mono) text-[0.6875rem] uppercase tracking-[0.14em] text-(--color-text-muted)">
             Cargando voladuras

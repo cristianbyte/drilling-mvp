@@ -203,7 +203,7 @@ export default function SupervisorPerforacionDetail({
       </div>
 
       <div className="space-y-4 p-4 sm:p-5">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <MetricCard
             label="Voladura"
             value={`${blast.blastCode} - ${blast.location}`}
@@ -219,23 +219,8 @@ export default function SupervisorPerforacionDetail({
           />
         </div>
 
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            flexWrap: "wrap",
-            gap: 10,
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              gap: 10,
-              flexWrap: "wrap",
-              alignItems: "center",
-            }}
-          >
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-1">
             {[
               { key: "TODOS", label: "Todos" },
               { key: "DIA", label: "Dia" },
@@ -262,7 +247,7 @@ export default function SupervisorPerforacionDetail({
                 fontSize: 12,
                 padding: "7px 12px",
                 outline: "none",
-                width: 160,
+                width: "auto",
               }}
             />
           </div>
