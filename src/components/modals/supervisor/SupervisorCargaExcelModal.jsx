@@ -1,6 +1,6 @@
 import { useState } from "react";
-import SupervisorCargaUploadTab from "./SupervisorCargaUploadTab";
-import { exportSupervisorCargaToXlsx } from "../lib/exportSupervisorCargaXlsx";
+import SupervisorCargaUploadTab from "../../features/supervisor/carga/SupervisorCargaUploadTab";
+import { exportSupervisorCargaToXlsx } from "../../../lib/exportSupervisorCargaXlsx";
 
 function buildExportState() {
   return {

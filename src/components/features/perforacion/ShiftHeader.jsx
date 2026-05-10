@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import { createClientId } from "../lib/ids";
-import { getTodayDateKey } from "../lib/datetime";
-import { normalizeDecimalInput } from "../utils/decimal";
-import { showToast } from "./Toast";
-import FrozenField from "./FronzenField";
-import { blastRepository } from "../di/container";
-import { supabase } from "../infrastructure/supabase/supabaseClient";
+import { createClientId } from "../../../lib/ids";
+import { getTodayDateKey } from "../../../lib/datetime";
+import { normalizeDecimalInput } from "../../../utils/decimal";
+import { showToast } from "../../ui/Toast";
+import FrozenField from "../../forms/FrozenField";
+import { blastRepository } from "../../../di/container";
+import { supabase } from "../../../infrastructure/supabase/supabaseClient";
 
 const SHIFTS = ["DIA", "NOCHE"];
 

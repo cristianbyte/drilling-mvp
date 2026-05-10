@@ -1,12 +1,12 @@
 import { useState } from "react";
-import ActionIconButton from "./ActionIconButton";
-import ConfirmModal from "./ConfirmModal";
-import EditHoleModal from "./EditHoleModal";
-import { showToast } from "./Toast";
-import TrashIcon from "../assets/trashIcon.svg";
-import SyncIcon from "../assets/syncIcon.svg";
-import AsyncIcon from "../assets/asyncIcon.svg";
-import EditIcon from "../assets/editIcon.svg";
+import ActionIconButton from "../../ui/ActionIconButton";
+import ConfirmModal from "../../modals/shared/ConfirmModal";
+import EditHoleModal from "../../modals/perforacion/EditHoleModal";
+import { showToast } from "../../ui/Toast";
+import TrashIcon from "../../../assets/trashIcon.svg";
+import SyncIcon from "../../../assets/syncIcon.svg";
+import AsyncIcon from "../../../assets/asyncIcon.svg";
+import EditIcon from "../../../assets/editIcon.svg";
 
 function SyncStatusIcon({ synced }) {
   return <>{synced ? <SyncIcon /> : <AsyncIcon />}</>;

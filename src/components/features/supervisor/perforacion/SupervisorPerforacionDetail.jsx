@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import Tag from "./Tag";
-import { formatTime } from "../lib/datetime";
+import Tag from "../../../ui/Tag";
+import { formatTime } from "../../../../lib/datetime";
 
 function FilterBtn({ label, active, onClick }) {
   return (

@@ -1,4 +1,4 @@
-import ExportExcelIcon from "../assets/exportExcelIcon.svg";
+import ExportExcelIcon from "../../../../assets/exportExcelIcon.svg";
 
 export default function SupervisorExportAction({
   onClick,

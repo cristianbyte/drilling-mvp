@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import SupervisorCargaExcelAction from "../components/SupervisorCargaExcelAction";
-import SupervisorCargaExcelModal from "../components/SupervisorCargaExcelModal";
-import SupervisorHeader from "../components/SupervisorHeader";
-import SupervisorCargaDetail from "../components/SupervisorCargaDetail";
-import SupervisorCargaSidebar from "../components/SupervisorCargaSidebar";
+import SupervisorCargaExcelAction from "../components/features/supervisor/carga/SupervisorCargaExcelAction";
+import SupervisorCargaExcelModal from "../components/modals/supervisor/SupervisorCargaExcelModal";
+import SupervisorHeader from "../components/layout/supervisor/SupervisorHeader";
+import SupervisorCargaDetail from "../components/features/supervisor/carga/SupervisorCargaDetail";
+import SupervisorCargaSidebar from "../components/features/supervisor/SupervisorCargaSidebar";
 import { supervisorRepository } from "../di/container";
 import { usePageTitle } from "../hooks/usePageTitle";
 

@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import CargaHolesSection from "../components/CargaHolesSection";
-import CargaLeaderSection from "../components/CargaLeaderSection";
-import DensityControlModal from "../components/DensityControlModal";
-import LoadHoleModal from "../components/LoadHoleModal";
-import Toast, { showToast, useToast } from "../components/Toast";
+import CargaHolesSection from "../components/features/carga/CargaHolesSection";
+import CargaLeaderSection from "../components/features/carga/CargaLeaderSection";
+import DensityControlModal from "../components/modals/carga/DensityControlModal";
+import LoadHoleModal from "../components/modals/carga/LoadHoleModal";
+import Toast, { showToast, useToast } from "../components/ui/Toast";
 import { blastRepository, holeRepository } from "../di/container";
 import { supabaseReady } from "../infrastructure/supabase/supabaseClient";
 import { createClientId } from "../lib/ids";

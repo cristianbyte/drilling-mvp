@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import HoleLog from "../components/HoleLog";
-import Toast, { showToast, useToast } from "../components/Toast";
+import HoleLog from "../components/features/perforacion/HoleLog";
+import Toast, { showToast, useToast } from "../components/ui/Toast";
 import { holeRepository, operatorRepository } from "../di/container";
 import { supabaseReady } from "../infrastructure/supabase/supabaseClient";
 import { createClientId } from "../lib/ids";
@@ -15,8 +15,8 @@ import {
   saveOperatorSnapshot,
   saveRecord,
 } from "../lib/offlineStore";
-import ShiftHeader from "../components/ShiftHeader";
-import HoleEntry from "../components/HoleEntry";
+import ShiftHeader from "../components/features/perforacion/ShiftHeader";
+import HoleEntry from "../components/features/perforacion/HoleEntry";
 import { usePageTitle } from "../hooks/usePageTitle";
 
 function buildSnapshot(shift, holes, blastHolesCatalog) {

@@ -1,5 +1,5 @@
 // FrozenField.jsx
-import { getTodayDateKey } from "../lib/datetime";
+import { getTodayDateKey } from "../../lib/datetime";
 
 export default function FrozenField({ label, value }) {
   const display = value == null || value === "" ? "—" : value;

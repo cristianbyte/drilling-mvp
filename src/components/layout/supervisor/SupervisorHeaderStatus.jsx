@@ -1,5 +1,5 @@
-import LiveBadge from "./LiveBadge";
-import { formatTime } from "../lib/datetime";
+import LiveBadge from "../../ui/LiveBadge";
+import { formatTime } from "../../../lib/datetime";
 
 export default function SupervisorHeaderStatus({
   lastUpdate,

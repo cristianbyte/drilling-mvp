@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { normalizeDecimalInput } from "../utils/decimal";
+import { normalizeDecimalInput } from "../../../utils/decimal";
 
 function parseOptionalNumber(value) {
   if (value === "") return null;

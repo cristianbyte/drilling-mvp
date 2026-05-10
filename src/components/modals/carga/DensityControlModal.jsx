@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { densityControlFields } from "../lib/densityControl";
-import { normalizeDecimalInput } from "../utils/decimal";
+import { densityControlFields } from "../../../lib/densityControl";
+import { normalizeDecimalInput } from "../../../utils/decimal";
 
 function toInputValue(value) {
   return value ?? "";

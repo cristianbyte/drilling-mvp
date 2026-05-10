@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { normalizeDecimalInput } from "../utils/decimal";
-import { showToast } from "./Toast";
+import { normalizeDecimalInput } from "../../../utils/decimal";
+import { showToast } from "../../ui/Toast";
 
 function parseOptionalNumber(value) {
   if (value === "") return null;

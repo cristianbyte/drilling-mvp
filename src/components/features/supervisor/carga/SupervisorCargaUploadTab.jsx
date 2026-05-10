@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import * as XLSX from "xlsx";
-import { blastRepository, holeRepository } from "../di/container";
+import { blastRepository, holeRepository } from "../../../../di/container";
 
 const COLUMN_CONFIG = [
   { key: "holeNumber", label: "No. Pozo", column: "A" },

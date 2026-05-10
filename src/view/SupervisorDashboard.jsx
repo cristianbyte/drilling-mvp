@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import ExportDayModal from "../components/ExportDayModal";
-import SupervisorHeader from "../components/SupervisorHeader";
-import SupervisorExportAction from "../components/SupervisorExportAction";
-import SupervisorCargaSidebar from "../components/SupervisorCargaSidebar";
-import SupervisorPerforacionDetail from "../components/SupervisorPerforacionDetail";
+import ExportDayModal from "../components/modals/supervisor/ExportDayModal";
+import SupervisorHeader from "../components/layout/supervisor/SupervisorHeader";
+import SupervisorExportAction from "../components/features/supervisor/perforacion/SupervisorExportAction";
+import SupervisorCargaSidebar from "../components/features/supervisor/SupervisorCargaSidebar";
+import SupervisorPerforacionDetail from "../components/features/supervisor/perforacion/SupervisorPerforacionDetail";
 import { supervisorRepository } from "../di/container";
 import {
   formatDateTime,
