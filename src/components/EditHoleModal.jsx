@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { normalizeDecimalInput } from "../utils/decimal";
 
 function parseOptionalNumber(value) {
   if (value === "") return null;
@@ -130,35 +131,44 @@ export default function EditHoleModal({ hole, onClose, onSave }) {
               <label className="field-label">Profundidad (m)</label>
               <input
                 className="field-input"
-                type="number"
+                type="text"
                 step="0.1"
                 inputMode="decimal"
                 value={form.depth}
-                onChange={(event) => setField("depth", event.target.value)}
+                onChange={(event) =>
+                  setField("depth", normalizeDecimalInput(event.target.value))
+                }
               />
             </div>
             <div>
               <label className="field-label">Techo (m)</label>
               <input
                 className="field-input"
-                type="number"
+                type="text"
                 step="0.1"
                 min="0"
                 inputMode="decimal"
                 value={form.ceiling}
-                onChange={(event) => setField("ceiling", event.target.value)}
+                onChange={(event) =>
+                  setField(
+                    "ceiling",
+                    normalizeDecimalInput(event.target.value),
+                  )
+                }
               />
             </div>
             <div>
               <label className="field-label">Piso (m)</label>
               <input
                 className="field-input"
-                type="number"
+                type="text"
                 step="0.1"
                 min="0"
                 inputMode="decimal"
                 value={form.floor}
-                onChange={(event) => setField("floor", event.target.value)}
+                onChange={(event) =>
+                  setField("floor", normalizeDecimalInput(event.target.value))
+                }
               />
             </div>
           </div>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { createClientId } from "../lib/ids";
 import { getTodayDateKey } from "../lib/datetime";
+import { normalizeDecimalInput } from "../utils/decimal";
 import { showToast } from "./Toast";
 import FrozenField from "./FronzenField";
 import { blastRepository } from "../di/container";
@@ -463,11 +464,13 @@ export default function ShiftHeader({ onFrozen, initialShift = null }) {
             <label className="field-label">Diámetro</label>
             <input
               className="field-input"
-              type="number"
+              type="text"
               placeholder="89"
               inputMode="decimal"
               value={form.diameter}
-              onChange={(e) => set("diameter", e.target.value)}
+              onChange={(e) =>
+                set("diameter", normalizeDecimalInput(e.target.value))
+              }
             />
           </div>
           <div>
@@ -488,14 +491,16 @@ export default function ShiftHeader({ onFrozen, initialShift = null }) {
               </div>
               <input
                 className="field-input border-none rounded-l-none bg-color-surface-1"
-                type="number"
+                type="text"
                 placeholder="10"
                 inputMode="decimal"
                 step="0.1"
                 min="0"
                 value={getAbs(form.elevation)}
                 onChange={(e) => {
-                  const abs = e.target.value.replace(/^-/, ""); // bloquea negativo nativo
+                  const abs = normalizeDecimalInput(
+                    e.target.value.replace(/^-/, ""),
+                  );
                   set("elevation", getSign(form.elevation) + abs);
                 }}
               />

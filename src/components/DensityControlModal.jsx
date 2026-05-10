@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { densityControlFields } from "../lib/densityControl";
+import { normalizeDecimalInput } from "../utils/decimal";
 
 function toInputValue(value) {
   return value ?? "";
@@ -15,17 +16,46 @@ function parseNullableNumber(value) {
 }
 
 export default function DensityControlModal({ blast, draft, onClose, onSave }) {
-  const [localDraft, setLocalDraft] = useState(() => draft);
+  const [form, setForm] = useState(() =>
+    densityControlFields.reduce(
+      (current, { key }) => ({
+        ...current,
+        [key]: toInputValue(draft?.[key]),
+      }),
+      {},
+    ),
+  );
+
+  useEffect(() => {
+    setForm(
+      densityControlFields.reduce(
+        (current, { key }) => ({
+          ...current,
+          [key]: toInputValue(draft?.[key]),
+        }),
+        {},
+      ),
+    );
+  }, [draft]);
 
   function handleChange(field, value) {
-    setLocalDraft((current) => ({
+    setForm((current) => ({
       ...current,
-      [field]: parseNullableNumber(value),
+      [field]: normalizeDecimalInput(value),
     }));
   }
 
   function handleSave() {
-    onSave(localDraft);
+    onSave({
+      ...draft,
+      ...densityControlFields.reduce(
+        (current, { key }) => ({
+          ...current,
+          [key]: parseNullableNumber(form[key]),
+        }),
+        {},
+      ),
+    });
   }
 
   return (
@@ -84,8 +114,9 @@ export default function DensityControlModal({ blast, draft, onClose, onSave }) {
               <div key={key}>
                 <label className="field-label">{label}</label>
                 <input
-                  type="number"
-                  value={toInputValue(localDraft?.[key])}
+                  type="text"
+                  inputMode="decimal"
+                  value={form[key] ?? ""}
                   onChange={(event) => handleChange(key, event.target.value)}
                   className="field-input"
                 />

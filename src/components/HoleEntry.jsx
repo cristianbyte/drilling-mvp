@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { normalizeDecimalInput } from "../utils/decimal";
 import { showToast } from "./Toast";
 
 function parseOptionalNumber(value) {
@@ -197,12 +198,14 @@ export default function HoleEntry({
             <input
               ref={depthRef}
               className={`field-input font-(--font-mono) text-2xl sm:text-[1.5rem] ${error.depth ? "field-input--error" : ""}`}
-              type="number"
+              type="text"
               placeholder="0.0"
               inputMode="decimal"
               step="0.1"
               value={form.depth}
-              onChange={(event) => setField("depth", event.target.value)}
+              onChange={(event) =>
+                setField("depth", normalizeDecimalInput(event.target.value))
+              }
               onKeyDown={handleKeyDown}
             />
             {error.depth && (
@@ -291,13 +294,15 @@ export default function HoleEntry({
             <label className="field-label">Techo (m)</label>
             <input
               className="field-input"
-              type="number"
+              type="text"
               min="0"
               placeholder="0.0"
               inputMode="decimal"
               step="0.1"
               value={form.ceiling}
-              onChange={(event) => setField("ceiling", event.target.value)}
+              onChange={(event) =>
+                setField("ceiling", normalizeDecimalInput(event.target.value))
+              }
               onKeyDown={handleKeyDown}
             />
           </div>
@@ -306,13 +311,15 @@ export default function HoleEntry({
             <label className="field-label">Piso (m)</label>
             <input
               className="field-input"
-              type="number"
+              type="text"
               min="0"
               placeholder="0.0"
               inputMode="decimal"
               step="0.1"
               value={form.floor}
-              onChange={(event) => setField("floor", event.target.value)}
+              onChange={(event) =>
+                setField("floor", normalizeDecimalInput(event.target.value))
+              }
               onKeyDown={handleKeyDown}
             />
           </div>

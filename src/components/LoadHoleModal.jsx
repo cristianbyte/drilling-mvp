@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { normalizeDecimalInput } from "../utils/decimal";
 
 function toInputValue(value) {
   return value ?? "";
@@ -14,21 +15,37 @@ function parseNullableNumber(value) {
 }
 
 export default function LoadHoleModal({ hole, draft, onClose, onSave }) {
-  const [localDraft, setLocalDraft] = useState(draft);
+  const [form, setForm] = useState(() => ({
+    leveling: toInputValue(draft?.leveling),
+    deck: toInputValue(draft?.deck),
+    emulsionTotal: toInputValue(draft?.emulsionTotal),
+    stemmingFinal: toInputValue(draft?.stemmingFinal),
+  }));
 
   useEffect(() => {
-    setLocalDraft(draft);
+    setForm({
+      leveling: toInputValue(draft?.leveling),
+      deck: toInputValue(draft?.deck),
+      emulsionTotal: toInputValue(draft?.emulsionTotal),
+      stemmingFinal: toInputValue(draft?.stemmingFinal),
+    });
   }, [draft]);
 
   function handleChange(field, value) {
-    setLocalDraft((current) => ({
+    setForm((current) => ({
       ...current,
-      [field]: parseNullableNumber(value),
+      [field]: normalizeDecimalInput(value),
     }));
   }
 
   function handleSave() {
-    onSave(localDraft);
+    onSave({
+      ...draft,
+      leveling: parseNullableNumber(form.leveling),
+      deck: parseNullableNumber(form.deck),
+      emulsionTotal: parseNullableNumber(form.emulsionTotal),
+      stemmingFinal: parseNullableNumber(form.stemmingFinal),
+    });
   }
 
   return (
@@ -66,7 +83,7 @@ export default function LoadHoleModal({ hole, draft, onClose, onSave }) {
               <label className="field-label">Profundidad Diseño</label>
               <input
                 type="number"
-                value={toInputValue(localDraft.plannedDepth)}
+                value={toInputValue(draft?.plannedDepth)}
                 disabled
                 className="field-input cursor-not-allowed bg-(--color-surface-base) text-(--color-text-muted) opacity-100"
                 readOnly
@@ -77,7 +94,7 @@ export default function LoadHoleModal({ hole, draft, onClose, onSave }) {
               <label className="field-label">Emulsion Total</label>
               <input
                 type="number"
-                value={toInputValue(localDraft.plannedEmulsion)}
+                value={toInputValue(draft?.plannedEmulsion)}
                 disabled
                 className="field-input cursor-not-allowed bg-(--color-surface-base) text-(--color-text-muted) opacity-100"
                 readOnly
@@ -88,7 +105,7 @@ export default function LoadHoleModal({ hole, draft, onClose, onSave }) {
               <label className="field-label">Retacado Inicial</label>
               <input
                 type="number"
-                value={toInputValue(localDraft.plannedStemmingInitial)}
+                value={toInputValue(draft?.plannedStemmingInitial)}
                 disabled
                 className="field-input cursor-not-allowed bg-(--color-surface-base) text-(--color-text-muted) opacity-100"
                 readOnly
@@ -99,7 +116,7 @@ export default function LoadHoleModal({ hole, draft, onClose, onSave }) {
               <label className="field-label">Retacado Final Diseño</label>
               <input
                 type="number"
-                value={toInputValue(localDraft.plannedStemmingFinal)}
+                value={toInputValue(draft?.plannedStemmingFinal)}
                 disabled
                 className="field-input cursor-not-allowed bg-(--color-surface-base) text-(--color-text-muted) opacity-100"
                 readOnly
@@ -109,8 +126,9 @@ export default function LoadHoleModal({ hole, draft, onClose, onSave }) {
             <div>
               <label className="field-label">Nivelacion</label>
               <input
-                type="number"
-                value={toInputValue(localDraft.leveling)}
+                type="text"
+                inputMode="decimal"
+                value={form.leveling}
                 onChange={(event) =>
                   handleChange("leveling", event.target.value)
                 }
@@ -121,8 +139,9 @@ export default function LoadHoleModal({ hole, draft, onClose, onSave }) {
             <div>
               <label className="field-label">Deck</label>
               <input
-                type="number"
-                value={toInputValue(localDraft.deck)}
+                type="text"
+                inputMode="decimal"
+                value={form.deck}
                 onChange={(event) => handleChange("deck", event.target.value)}
                 className="field-input"
               />
@@ -131,8 +150,9 @@ export default function LoadHoleModal({ hole, draft, onClose, onSave }) {
             <div>
               <label className="field-label">Emulsion total</label>
               <input
-                type="number"
-                value={toInputValue(localDraft.emulsionTotal)}
+                type="text"
+                inputMode="decimal"
+                value={form.emulsionTotal}
                 onChange={(event) =>
                   handleChange("emulsionTotal", event.target.value)
                 }
@@ -143,8 +163,9 @@ export default function LoadHoleModal({ hole, draft, onClose, onSave }) {
             <div>
               <label className="field-label">Retacado Final Real</label>
               <input
-                type="number"
-                value={toInputValue(localDraft.stemmingFinal)}
+                type="text"
+                inputMode="decimal"
+                value={form.stemmingFinal}
                 onChange={(event) =>
                   handleChange("stemmingFinal", event.target.value)
                 }
