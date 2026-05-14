@@ -1,10 +1,10 @@
 import * as XLSX from "xlsx";
-import { formatDateTime, getDateKey } from "./datetime";
+import { formatDateTime, formatTime, getDateKey } from "./datetime";
 
 const EMPTY = "";
 
 const COLUMN_CONFIG = [
-  ["Fecha", (row) => row.date || getDateKey(row.createdAt)],
+  ["Fecha", (row) => (row.createdAt ? getDateKey(row.createdAt) : EMPTY)],
   ["Turno", (row) => row.shift || EMPTY],
   ["Operador", (row) => row.operatorName || EMPTY],
   ["Equipo", (row) => row.equipment || EMPTY],
@@ -17,8 +17,7 @@ const COLUMN_CONFIG = [
   ["Profundidad (m)", (row) => formatNumber(row.depth)],
   ["Techo (m)", (row) => formatNumber(row.ceiling)],
   ["Piso (m)", (row) => formatNumber(row.floor)],
-  ["Fecha registro", (row) => formatDateTime(row.createdAt)],
-  ["Recencia", (row) => formatDateTime(row.recency)],
+  ["Hora", (row) => (row.createdAt ? formatTime(row.createdAt) : EMPTY)],
   ["Actualizado por", (row) => row.updatedBy || EMPTY],
   ["Actualizado en", (row) => formatDateTime(row.updatedAt)],
   ["ID barreno", (row) => row.holeId || EMPTY],
@@ -33,10 +32,7 @@ function formatNumber(value) {
 
 export function exportRowsToXlsx(rows = [], selectedDate) {
   const exportRows = rows
-    .filter(
-      (row) =>
-        getDateKey(row.createdAt) === selectedDate || row.date === selectedDate,
-    )
+    .filter((row) => row.createdAt && getDateKey(row.createdAt) === selectedDate)
     .sort((a, b) => {
       const shiftCompare = (a.shift || "").localeCompare(b.shift || "");
       if (shiftCompare !== 0) return shiftCompare;

@@ -5,11 +5,7 @@ import SupervisorExportAction from "../components/features/supervisor/perforacio
 import SupervisorCargaSidebar from "../components/features/supervisor/SupervisorCargaSidebar";
 import SupervisorPerforacionDetail from "../components/features/supervisor/perforacion/SupervisorPerforacionDetail";
 import { supervisorRepository } from "../di/container";
-import {
-  formatDateTime,
-  getBrowserTimeZone,
-  getTodayDateKey,
-} from "../lib/datetime";
+import { getBrowserTimeZone, getTodayDateKey } from "../lib/datetime";
 import { exportRowsToXlsx } from "../lib/exportXlsx";
 import { usePageTitle } from "../hooks/usePageTitle";
 
@@ -142,7 +138,6 @@ export default function SupervisorDashboard() {
             blast={selectedBlast}
             rows={selectedRows}
             loading={loadingDetail}
-            fmtDateTime={(value) => formatDateTime(value, timeZone)}
           />
         </div>
 

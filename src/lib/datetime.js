@@ -66,3 +66,21 @@ export function formatDateTime(
     hour12: false,
   });
 }
+
+export function formatCompactDateTime(
+  value,
+  timeZone = getBrowserTimeZone(),
+  locale = DEFAULT_LOCALE,
+) {
+  if (!value) return "";
+
+  return new Date(value).toLocaleString(locale, {
+    timeZone,
+    year: "2-digit",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}

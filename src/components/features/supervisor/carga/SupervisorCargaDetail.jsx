@@ -1,3 +1,5 @@
+import { formatCompactDateTime } from "../../../../lib/datetime";
+
 // import { densityControlFields } from "../lib/densityControl";
 
 function countLoadedHoles(holes) {
@@ -20,10 +22,8 @@ function renderValue(value) {
 
 function sortHolesByRecentLoading(holes) {
   return [...holes].sort((a, b) => {
-    const aRecency =
-      a.loading?.updatedAt || a.loading?.createdAt || a.createdAt || "";
-    const bRecency =
-      b.loading?.updatedAt || b.loading?.createdAt || b.createdAt || "";
+    const aRecency = a.loading?.updatedAt || a.loading?.createdAt || "";
+    const bRecency = b.loading?.updatedAt || b.loading?.createdAt || "";
 
     return new Date(bRecency || 0) - new Date(aRecency || 0);
   });
@@ -165,6 +165,15 @@ export default function SupervisorCargaDetail({ blastFull, loading }) {
                 <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-(--color-text-muted)">
                   <div>
                     <p className="font-(--font-mono) text-[0.5625rem] uppercase tracking-[0.12em]">
+                      Registro
+                    </p>
+                    <p className="mt-1 text-(--color-text-primary)">
+                      {formatCompactDateTime(loadingRow?.createdAt)}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="font-(--font-mono) text-[0.5625rem] uppercase tracking-[0.12em]">
                       Planned depth
                     </p>
                     <p className="mt-1 text-(--color-text-primary)">
@@ -229,6 +238,7 @@ export default function SupervisorCargaDetail({ blastFull, loading }) {
                 {[
                   "Pozo",
                   "Lider",
+                  "Registro",
                   "Prof. D.",
                   "Emul. T. D.",
                   "Nivelacion",
@@ -257,6 +267,9 @@ export default function SupervisorCargaDetail({ blastFull, loading }) {
                     </td>
                     <td className="border-b border-(--color-border-subtle) px-4 py-3 text-sm text-(--color-text-primary)">
                       {loadingRow?.leader?.name || "-"}
+                    </td>
+                    <td className="border-b border-(--color-border-subtle) px-4 py-3 text-sm text-(--color-text-primary)">
+                      {formatCompactDateTime(loadingRow?.createdAt)}
                     </td>
                     <td className="border-b border-(--color-border-subtle) px-4 py-3 text-sm text-(--color-text-primary)">
                       {renderValue(loadingRow?.plannedDepth)}

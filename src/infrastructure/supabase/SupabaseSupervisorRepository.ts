@@ -32,22 +32,11 @@ function normalizeText(value: string | null | undefined) {
     .toUpperCase();
 }
 
-function getLatestTimestamp(...values: Array<string | null | undefined>) {
-  return values
-    .filter(Boolean)
-    .reduce<string | null>((latest, current) => {
-      if (!current) {
-        return latest;
-      }
-
-      if (!latest) {
-        return current;
-      }
-
-      return new Date(current).getTime() > new Date(latest).getTime()
-        ? current
-        : latest;
-    }, null);
+function getActivityTimestamp(
+  updatedAt: string | null | undefined,
+  createdAt: string | null | undefined,
+) {
+  return updatedAt || createdAt || null;
 }
 
 type DbSupervisorDrillingRow = {
@@ -242,7 +231,7 @@ export class SupabaseSupervisorRepository implements ISupervisorRepository {
       pattern: row.pattern,
       diameter: toThreeDecimals(row.diameter),
       elevation: toThreeDecimals(row.elevation),
-      recency: row.recency,
+      recency: getActivityTimestamp(row.updated_at, row.created_at),
       date: row.created_at ? getDateKey(row.created_at) : null,
     };
   }
@@ -341,21 +330,13 @@ export class SupabaseSupervisorRepository implements ISupervisorRepository {
           const drillingRow = this.getRelationOne(holeRow.hole_drilling);
           const loadingRow = this.getRelationOne(holeRow.hole_loading);
           const operatorRow = this.getRelationOne(drillingRow?.operators);
-          const recency = getLatestTimestamp(
-            drillingRow?.updated_at,
-            drillingRow?.created_at,
-            loadingRow?.updated_at,
-            loadingRow?.created_at,
-            holeRow.created_at,
-            blast.createdAt,
-          );
 
           return {
             drillingId: drillingRow?.id || null,
             depth: toThreeDecimals(drillingRow?.depth ?? null),
             ceiling: toThreeDecimals(drillingRow?.ceiling ?? null),
             floor: toThreeDecimals(drillingRow?.floor ?? null),
-            createdAt: drillingRow?.created_at || holeRow.created_at,
+            createdAt: drillingRow?.created_at || null,
             updatedAt: drillingRow?.updated_at || null,
             updatedBy: drillingRow?.updated_by || null,
             holeId: holeRow.id,
@@ -371,23 +352,24 @@ export class SupabaseSupervisorRepository implements ISupervisorRepository {
             pattern: operatorRow?.pattern || null,
             diameter: toThreeDecimals(operatorRow?.diameter ?? null),
             elevation: toThreeDecimals(operatorRow?.elevation ?? null),
-            recency,
-            date: recency ? getDateKey(recency) : null,
+            recency: getActivityTimestamp(
+              drillingRow?.updated_at,
+              drillingRow?.created_at,
+            ),
+            date: drillingRow?.created_at ? getDateKey(drillingRow.created_at) : null,
           } satisfies SupervisorDrillingRow;
         })
         .sort(
           (a, b) =>
-            new Date(b.recency || b.updatedAt || b.createdAt || 0).getTime() -
-            new Date(a.recency || a.updatedAt || a.createdAt || 0).getTime(),
+            new Date(b.recency || 0).getTime() -
+            new Date(a.recency || 0).getTime(),
         );
 
-      return {
-        blast,
-        rows: drillingRows,
-        latestRecency: new Date(
-          drillingRows[0]?.recency || blast.updatedAt || blast.createdAt || 0,
-        ).getTime(),
-      };
+        return {
+          blast,
+          rows: drillingRows,
+          latestRecency: new Date(drillingRows[0]?.recency || 0).getTime(),
+        };
     });
 
     grouped.sort((a, b) => b.latestRecency - a.latestRecency);
@@ -484,8 +466,7 @@ export class SupabaseSupervisorRepository implements ISupervisorRepository {
         id: holeId,
         blastId,
         holeNumber: row.holeNumber ?? 0,
-        createdAt:
-          row.loadingCreatedAt || row.loadingUpdatedAt || blast.createdAt,
+        createdAt: blast.createdAt,
         drilling: null,
         loading: hasLoadingData
           ? {
@@ -500,8 +481,8 @@ export class SupabaseSupervisorRepository implements ISupervisorRepository {
               deck: row.deck,
               emulsionTotal: row.emulsionTotal,
               stemmingFinal: row.stemmingFinal,
-              createdAt: row.loadingCreatedAt || row.recency || blast.createdAt,
-              updatedAt: row.loadingUpdatedAt || row.recency,
+              createdAt: row.loadingCreatedAt || null,
+              updatedAt: row.loadingUpdatedAt || null,
               updatedBy: row.loadingUpdatedBy,
               leader: row.leaderName
                 ? {
@@ -517,17 +498,39 @@ export class SupabaseSupervisorRepository implements ISupervisorRepository {
 
     const blasts = [...grouped.values()]
       .map(({ blast, holesById }) => {
-        blast.holes = [...holesById.values()].sort(
-          (a, b) => a.holeNumber - b.holeNumber,
-        );
+        const holes = [...holesById.values()].sort((a, b) => a.holeNumber - b.holeNumber);
+        blast.holes = holes;
 
-        return blast;
+        const latestActivity = holes.reduce((latest, hole) => {
+          const current = getActivityTimestamp(
+            hole.loading?.updatedAt,
+            hole.loading?.createdAt,
+          );
+
+          if (!current) {
+            return latest;
+          }
+
+          if (!latest) {
+            return current;
+          }
+
+          return new Date(current).getTime() > new Date(latest).getTime()
+            ? current
+            : latest;
+        }, null as string | null);
+
+        return {
+          blast,
+          latestActivity,
+        };
       })
       .sort(
         (a, b) =>
-          new Date(b.createdAt || 0).getTime() -
-          new Date(a.createdAt || 0).getTime(),
-      );
+          new Date(b.latestActivity || 0).getTime() -
+          new Date(a.latestActivity || 0).getTime(),
+      )
+      .map(({ blast }) => blast);
 
     return {
       blasts: blasts.map(({ holes, ...blast }) => blast),
@@ -545,7 +548,7 @@ export class SupabaseSupervisorRepository implements ISupervisorRepository {
     const { data, error } = await supabase
       .from("v_supervisor_holes")
       .select("*")
-      .order("recency", { ascending: false })
+      .order("created_at", { ascending: false })
       .limit(limit);
 
     if (error) {
@@ -553,9 +556,13 @@ export class SupabaseSupervisorRepository implements ISupervisorRepository {
       return [];
     }
 
-    return (data || []).map((row) =>
-      this.mapSupervisorDrillingRow(row as DbSupervisorDrillingRow),
-    );
+    return (data || [])
+      .map((row) => this.mapSupervisorDrillingRow(row as DbSupervisorDrillingRow))
+      .sort(
+        (a, b) =>
+          new Date(getActivityTimestamp(b.updatedAt, b.createdAt) || 0).getTime() -
+          new Date(getActivityTimestamp(a.updatedAt, a.createdAt) || 0).getTime(),
+      );
   }
 
   async fetchDrillingRowsByDate(
@@ -569,16 +576,20 @@ export class SupabaseSupervisorRepository implements ISupervisorRepository {
     const { data, error } = await supabase
       .from("v_supervisor_holes")
       .select("*")
-      .order("recency", { ascending: false });
+      .order("created_at", { ascending: false });
 
     if (error) {
       console.error("Error fetching supervisor drilling rows by date:", error);
       return [];
     }
 
-    const rows = (data || []).map((row) =>
-      this.mapSupervisorDrillingRow(row as DbSupervisorDrillingRow),
-    );
+    const rows = (data || [])
+      .map((row) => this.mapSupervisorDrillingRow(row as DbSupervisorDrillingRow))
+      .sort(
+        (a, b) =>
+          new Date(getActivityTimestamp(b.updatedAt, b.createdAt) || 0).getTime() -
+          new Date(getActivityTimestamp(a.updatedAt, a.createdAt) || 0).getTime(),
+      );
 
     return rows.filter(
       (row) => row.createdAt && getDateKey(row.createdAt, timeZone) === date,

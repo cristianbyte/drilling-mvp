@@ -1,5 +1,5 @@
 import Tag from "../../../ui/Tag";
-import { formatTime } from "../../../../lib/datetime";
+import { formatCompactDateTime, formatTime } from "../../../../lib/datetime";
 
 function FilterBtn({ label, active, onClick }) {
   return (
@@ -105,7 +105,6 @@ export default function SupervisorTable({
   setFiltroTurno,
   filtroOp,
   setFiltroOp,
-  fmtDateTime,
 }) {
   const headers = [
     "Barreno",
@@ -118,9 +117,8 @@ export default function SupervisorTable({
     "Diferencia",
     "Techo",
     "Piso",
-    "Creado",
+    "Registro",
     "Actualizado",
-    "Recencia",
     "Actualizado por",
   ];
 
@@ -343,7 +341,7 @@ export default function SupervisorTable({
                     whiteSpace: "nowrap",
                   }}
                 >
-                  {formatTime(row.createdAt)}
+                  {formatCompactDateTime(row.createdAt)}
                 </td>
                 <td
                   style={{
@@ -355,17 +353,6 @@ export default function SupervisorTable({
                   }}
                 >
                   {formatTime(row.updatedAt)}
-                </td>
-                <td
-                  style={{
-                    padding: "10px 12px",
-                    color: "var(--color-text-muted)",
-                    fontFamily: "var(--font-mono)",
-                    fontSize: 12,
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {fmtDateTime(row.recency)}
                 </td>
                 <td
                   style={{

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import Tag from "../../../ui/Tag";
-import { formatTime } from "../../../../lib/datetime";
+import { formatCompactDateTime } from "../../../../lib/datetime";
 
 function FilterBtn({ label, active, onClick }) {
   return (
@@ -123,7 +123,6 @@ export default function SupervisorPerforacionDetail({
   blast,
   rows = [],
   loading,
-  fmtDateTime,
 }) {
   const [filtroTurno, setFiltroTurno] = useState("TODOS");
   const [filtroOp, setFiltroOp] = useState("");
@@ -341,18 +340,10 @@ export default function SupervisorPerforacionDetail({
                   </div>
                   <div>
                     <p className="font-(--font-mono) text-[0.5625rem] uppercase tracking-[0.12em]">
-                      Creado
+                      Registro
                     </p>
                     <p className="mt-1 text-(--color-text-primary)">
-                      {formatTime(row.createdAt)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="font-(--font-mono) text-[0.5625rem] uppercase tracking-[0.12em]">
-                      Recencia
-                    </p>
-                    <p className="mt-1 text-(--color-text-primary)">
-                      {fmtDateTime(row.recency)}
+                      {formatCompactDateTime(row.createdAt)}
                     </p>
                   </div>
                 </div>
@@ -380,8 +371,7 @@ export default function SupervisorPerforacionDetail({
                   "Diferencia",
                   "Techo",
                   "Piso",
-                  "Creado",
-                  "Recencia",
+                  "Registro",
                   "Actualizado por",
                 ].map((label) => (
                   <th
@@ -432,10 +422,7 @@ export default function SupervisorPerforacionDetail({
                       {formatMeters(row.floor)}
                     </td>
                     <td className="border-b border-(--color-border-subtle) px-4 py-3 text-sm text-(--color-text-primary)">
-                      {formatTime(row.createdAt)}
-                    </td>
-                    <td className="border-b border-(--color-border-subtle) px-4 py-3 text-sm text-(--color-text-primary)">
-                      {fmtDateTime(row.recency)}
+                      {formatCompactDateTime(row.createdAt)}
                     </td>
                     <td className="border-b border-(--color-border-subtle) px-4 py-3 text-sm text-(--color-text-primary)">
                       {row.updatedBy || "-"}
@@ -445,7 +432,7 @@ export default function SupervisorPerforacionDetail({
               ) : (
                 <tr>
                   <td
-                    colSpan={13}
+                      colSpan={12}
                     className="px-4 py-12 text-center font-(--font-mono) text-[0.6875rem] uppercase tracking-[0.14em] text-(--color-text-muted)"
                   >
                     Sin registros para este filtro

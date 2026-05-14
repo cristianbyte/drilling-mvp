@@ -1,4 +1,5 @@
 import * as XLSX from "xlsx";
+import { formatDateTime, formatTime } from "./datetime";
 
 const EMPTY = "";
 
@@ -7,6 +8,11 @@ const COLUMN_CONFIG = [
   ["Ubicacion", (blastFull) => blastFull.location || EMPTY],
   ["Barreno", (_, hole) => hole.holeNumber ?? EMPTY],
   ["Lider", (_, hole) => hole.loading?.leader?.name || EMPTY],
+  [
+    "Hora",
+    (_, hole) =>
+      hole.loading?.createdAt ? formatTime(hole.loading.createdAt) : EMPTY,
+  ],
   ["Profundidad Diseño", (_, hole) => formatNumber(hole.loading?.plannedDepth)],
   [
     "Emulsion Total Diseño",
@@ -28,7 +34,7 @@ const COLUMN_CONFIG = [
     (_, hole) => formatNumber(hole.loading?.stemmingFinal),
   ],
   ["Actualizado por", (_, hole) => hole.loading?.updatedBy || EMPTY],
-  ["Actualizado en", (_, hole) => hole.loading?.updatedAt || EMPTY],
+  ["Actualizado en", (_, hole) => formatDateTime(hole.loading?.updatedAt)],
 ];
 
 function formatNumber(value) {
