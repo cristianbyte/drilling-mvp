@@ -1,4 +1,5 @@
 import { useMemo, useRef } from "react";
+import CargaAccessoryUsageTrigger from "./CargaAccessoryUsageTrigger";
 import CargaHoleCard from "./CargaHoleCard";
 
 function parseNumericValue(value) {
@@ -14,12 +15,14 @@ function formatEmulsionTotal(value) {
 }
 
 export default function CargaHolesSection({
+  accessorySyncStatus = "synced",
   blastHoles,
   buildLoadingDraft,
   cargaBodyHeightClass,
   hasDraftData,
   holeDrafts,
   holeFilter,
+  onOpenAccessoryUsage,
   onSelectHole,
   onHoleFilterChange,
   totalBlastHoles,
@@ -71,12 +74,18 @@ export default function CargaHolesSection({
             {densityStatus}
           </span>
         </ActionIconButton> */}
-        <span className="ml-auto text-sm rounded-full border border-(--color-border-subtle) bg-(--color-surface-1) px-3 py-1 font-(--font-mono) uppercase tracking-[0.12em] text-(--color-text-muted)">
-          Emulsion Total:{" "}
-          <strong className="text-(--color-brand-amber)">
-            {formatEmulsionTotal(totalEmulsion)}
-          </strong>
-        </span>
+        <div className="ml-auto flex items-center gap-2">
+          <CargaAccessoryUsageTrigger
+            onOpen={onOpenAccessoryUsage}
+            status={accessorySyncStatus}
+          />
+          <span className="text-sm rounded-full border border-(--color-border-subtle) bg-(--color-surface-1) px-3 py-1 font-(--font-mono) uppercase tracking-[0.12em] text-(--color-text-muted)">
+            Emulsion Total:{" "}
+            <strong className="text-(--color-brand-amber)">
+              {formatEmulsionTotal(totalEmulsion)}
+            </strong>
+          </span>
+        </div>
       </div>
       <div
         ref={filterContainerRef}

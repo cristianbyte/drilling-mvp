@@ -684,6 +684,7 @@ export default function CargaForm() {
 
         {startedContext && (
           <CargaHolesSection
+            accessorySyncStatus="synced"
             blastHoles={filteredBlastHoles}
             buildLoadingDraft={buildLoadingDraft}
             cargaBodyHeightClass={cargaBodyHeightClass}
@@ -694,6 +695,7 @@ export default function CargaForm() {
             hasDensityData={hasDensityData(densityDraft)}
             holeDrafts={holeDrafts}
             holeFilter={holeFilter}
+            onOpenAccessoryUsage={() => {}}
             onOpenDensityControl={() => setDensityModalOpen(true)}
             onSelectHole={handleSelectHole}
             onHoleFilterChange={setHoleFilter}
