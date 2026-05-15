@@ -21,7 +21,7 @@ export default function CargaLeaderSection({
         <span className="section-title">Datos lider</span>
         {startedContext && (
           <span
-            className={`ml-auto font-(--font-mono) text-[0.5625rem] uppercase tracking-[0.12em] ${syncing ? "text-(--color-brand-cyan)" : !isOnline ? "text-(--color-brand-amber)" : pendingSyncCount ? "text-(--color-brand-cyan)" : "text-(--color-brand-emerald)"}`}
+            className={`ml-auto font-(--font-mono) text-[0.5625rem] uppercase tracking-[0.12em] ${syncing ? "text-(--color-brand-cyan)" : !isOnline ? "text-(--color-brand-amber)" : pendingSyncCount ? "text-(--color-brand-cyan)" : "border-(--color-brand-emerald)/30 bg-(--color-brand-emerald)/10 text-(--color-brand-emerald)"}`}
           >
             {syncing
               ? "Sincronizando"

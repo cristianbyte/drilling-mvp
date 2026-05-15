@@ -44,7 +44,7 @@ export default function CargaAccessoryUsageTrigger({
       className="cursor-pointer inline-flex items-center gap-2 rounded-[var(--radius-pill)] border border-(--color-border-subtle) bg-(--color-surface-1) px-3 py-2 text-left transition-all enabled:hover:-translate-y-px enabled:hover:border-(--color-border-strong) disabled:cursor-not-allowed disabled:opacity-60"
     >
       <span className="font-(--font-mono) text-[0.625rem] uppercase tracking-[0.12em] text-(--color-text-primary)">
-        Accesorios
+        Consumo
       </span>
       <span
         className={`rounded-full border px-2 py-0.5 font-(--font-mono) text-[0.5625rem] uppercase tracking-[0.12em] ${meta.badgeTone}`}

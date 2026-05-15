@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import CargaHolesSection from "../components/features/carga/CargaHolesSection";
 import CargaLeaderSection from "../components/features/carga/CargaLeaderSection";
+import CargaAccessoryUsageModal from "../components/modals/carga/CargaAccessoryUsageModal";
 import DensityControlModal from "../components/modals/carga/DensityControlModal";
 import LoadHoleModal from "../components/modals/carga/LoadHoleModal";
 import Toast, { showToast, useToast } from "../components/ui/Toast";
@@ -23,6 +24,28 @@ import {
   saveRecord,
 } from "../lib/offlineStore";
 import { usePageTitle } from "../hooks/usePageTitle";
+
+function buildAccessoryUsageFormState(record) {
+  return {
+    id: record?.id || null,
+    usageDate: record?.usageDate || new Date().toISOString().slice(0, 10),
+    ikon15m: record?.ikon15m ? String(record.ikon15m) : "",
+    p337: record?.p337 ? String(record.p337) : "",
+    notes: record?.notes || "",
+  };
+}
+
+function parseAccessoryQty(value) {
+  if (value === "") return 0;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function normalizeAccessoryNumberInput(value) {
+  return String(value ?? "")
+    .replace(/\D/g, "")
+    .slice(0, 2);
+}
 
 function buildStartedContext(leader, blast) {
   if (!leader || !blast) return null;
@@ -120,6 +143,11 @@ export default function CargaForm() {
   const [densityDraft, setDensityDraft] = useState(null);
   const [holeDrafts, setHoleDrafts] = useState({});
   const [activeHoleId, setActiveHoleId] = useState(null);
+  const [accessoryUsageModalOpen, setAccessoryUsageModalOpen] = useState(false);
+  const [accessoryUsageForm, setAccessoryUsageForm] = useState(() =>
+    buildAccessoryUsageFormState(),
+  );
+  const [accessoryUsageRecords, setAccessoryUsageRecords] = useState([]);
   const [densityModalOpen, setDensityModalOpen] = useState(false);
   const syncingRef = useRef(false);
   const toastState = useToast();
@@ -163,6 +191,36 @@ export default function CargaForm() {
   const cargaBodyHeightClass = startedContext
     ? "lg:max-h-[calc(100vh-15rem)]"
     : "";
+  useEffect(() => {
+    setAccessoryUsageRecords([
+      {
+        id: "mock-1",
+        usageDate: "2026-05-15",
+        ikon15m: 12,
+        p337: 0,
+        notes: "Carga inicial de prueba para maqueta visual.",
+        createdBy: startedContext?.leaderName || "Lider",
+        createdAt: Date.now() - 1000 * 60 * 45,
+        updatedBy: startedContext?.leaderName || "Lider",
+        updatedAt: null,
+        synced: true,
+      },
+      {
+        id: "mock-2",
+        usageDate: "2026-05-15",
+        ikon15m: 0,
+        p337: 8,
+        notes: "Ajuste pendiente de sincronizacion.",
+        createdBy: startedContext?.leaderName || "Lider",
+        createdAt: Date.now() - 1000 * 60 * 15,
+        updatedBy: startedContext?.leaderName || "Lider",
+        updatedAt: Date.now() - 1000 * 60 * 10,
+        synced: false,
+      },
+    ]);
+  }, [startedContext?.leaderName]);
+
+  const isAccessoryEditing = Boolean(accessoryUsageForm.id);
 
   useEffect(() => {
     let mounted = true;
@@ -489,6 +547,8 @@ export default function CargaForm() {
       setHoleDrafts(nextDrafts);
       setHoleFilter("");
       setActiveHoleId(null);
+      setAccessoryUsageModalOpen(false);
+      resetAccessoryForm();
       setDensityModalOpen(false);
 
       await saveRecord(
@@ -507,6 +567,8 @@ export default function CargaForm() {
       setHoleDrafts({});
       setHoleFilter("");
       setActiveHoleId(null);
+      setAccessoryUsageModalOpen(false);
+      resetAccessoryForm();
       setDensityModalOpen(false);
       await saveRecord(
         createPendingRecord(
@@ -585,6 +647,75 @@ export default function CargaForm() {
     setActiveHoleId(hole?.id ?? null);
   }
 
+  function handleAccessoryFieldChange(field, value) {
+    const nextValue =
+      field === "ikon15m" || field === "p337"
+        ? normalizeAccessoryNumberInput(value)
+        : value;
+
+    setAccessoryUsageForm((current) => ({
+      ...current,
+      [field]: nextValue,
+    }));
+  }
+
+  function handleAccessoryEdit(record) {
+    setAccessoryUsageForm(buildAccessoryUsageFormState(record));
+  }
+
+  function resetAccessoryForm() {
+    setAccessoryUsageForm(buildAccessoryUsageFormState());
+  }
+
+  function handleAccessorySave() {
+    const nextData = {
+      usageDate: accessoryUsageForm.usageDate,
+      ikon15m: parseAccessoryQty(accessoryUsageForm.ikon15m),
+      p337: parseAccessoryQty(accessoryUsageForm.p337),
+      notes: accessoryUsageForm.notes.trim(),
+    };
+
+    if (accessoryUsageForm.id) {
+      setAccessoryUsageRecords((current) =>
+        current.map((record) =>
+          record.id === accessoryUsageForm.id
+            ? {
+                ...record,
+                ...nextData,
+                updatedBy: record.updatedBy || record.createdBy,
+                updatedAt: Date.now(),
+                synced: false,
+              }
+            : record,
+        ),
+      );
+      resetAccessoryForm();
+      return;
+    }
+
+    setAccessoryUsageRecords((current) => [
+      {
+        id: `mock-${Date.now()}`,
+        ...nextData,
+        createdBy: startedContext?.leaderName || "Lider",
+        createdAt: Date.now(),
+        updatedBy: null,
+        updatedAt: null,
+        synced: false,
+      },
+      ...current,
+    ]);
+    resetAccessoryForm();
+  }
+
+  function handleAccessoryDelete() {
+    if (!accessoryUsageForm.id) return;
+    setAccessoryUsageRecords((current) =>
+      current.filter((record) => record.id !== accessoryUsageForm.id),
+    );
+    resetAccessoryForm();
+  }
+
   async function handleReset() {
     const hasLocalData =
       Boolean(startedContext) ||
@@ -610,6 +741,8 @@ export default function CargaForm() {
     setDensityDraft(null);
     setHoleDrafts({});
     setActiveHoleId(null);
+    setAccessoryUsageModalOpen(false);
+    resetAccessoryForm();
     setDensityModalOpen(false);
     setHoleFilter("");
 
@@ -695,7 +828,7 @@ export default function CargaForm() {
             hasDensityData={hasDensityData(densityDraft)}
             holeDrafts={holeDrafts}
             holeFilter={holeFilter}
-            onOpenAccessoryUsage={() => {}}
+            onOpenAccessoryUsage={() => setAccessoryUsageModalOpen(true)}
             onOpenDensityControl={() => setDensityModalOpen(true)}
             onSelectHole={handleSelectHole}
             onHoleFilterChange={setHoleFilter}
@@ -719,6 +852,21 @@ export default function CargaForm() {
           draft={densityDraft}
           onClose={() => setDensityModalOpen(false)}
           onSave={handleSaveDensity}
+        />
+      )}
+
+      {accessoryUsageModalOpen && startedContext && (
+        <CargaAccessoryUsageModal
+          blast={selectedBlast || startedContext}
+          form={accessoryUsageForm}
+          isEditing={isAccessoryEditing}
+          onClose={() => setAccessoryUsageModalOpen(false)}
+          onDelete={handleAccessoryDelete}
+          onEdit={handleAccessoryEdit}
+          onFieldChange={handleAccessoryFieldChange}
+          onResetForm={resetAccessoryForm}
+          onSave={handleAccessorySave}
+          records={accessoryUsageRecords}
         />
       )}
 
