@@ -34,6 +34,5 @@ export interface IHoleRepository {
         >
       >
     >,
-    updatedBy: string,
   ): Promise<void>;
 }

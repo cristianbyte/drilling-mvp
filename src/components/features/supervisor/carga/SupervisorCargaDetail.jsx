@@ -93,7 +93,7 @@ export default function SupervisorCargaDetail({ blastFull, loading }) {
       </div>
 
       <div className="space-y-4 p-4 sm:p-5">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-[0.75rem] border border-(--color-border-subtle) bg-(--color-surface-base) px-4 py-3">
             <p className="font-(--font-mono) text-[0.6rem] uppercase tracking-[0.14em] text-(--color-text-muted)">
               Voladura
@@ -257,7 +257,7 @@ export default function SupervisorCargaDetail({ blastFull, loading }) {
                       </td>
                     ))}
                     <td className="border-b border-(--color-border-subtle) px-2 py-2 text-sm text-(--color-text-primary)">
-                      {formatCompactDateTime(loadingRow?.createdAt)}
+                      {formatCompactDateTime(loadingRow?.updatedAt)}
                     </td>
                   </tr>
                 );

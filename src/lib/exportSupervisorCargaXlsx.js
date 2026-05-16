@@ -9,9 +9,9 @@ const COLUMN_CONFIG = [
   ["Barreno", (_, hole) => hole.holeNumber ?? EMPTY],
   ["Lider", (_, hole) => hole.loading?.leader?.name || EMPTY],
   [
-    "Hora",
+    "Hora Registro",
     (_, hole) =>
-      hole.loading?.createdAt ? formatTime(hole.loading.createdAt) : EMPTY,
+      hole.loading?.updatedAt ? formatDateTime(hole.loading.updatedAt) : EMPTY,
   ],
   ["Profundidad Diseño", (_, hole) => formatNumber(hole.loading?.plannedDepth)],
   [
@@ -34,7 +34,6 @@ const COLUMN_CONFIG = [
     (_, hole) => formatNumber(hole.loading?.stemmingFinal),
   ],
   ["Actualizado por", (_, hole) => hole.loading?.updatedBy || EMPTY],
-  ["Actualizado en", (_, hole) => formatDateTime(hole.loading?.updatedAt)],
 ];
 
 function formatNumber(value) {

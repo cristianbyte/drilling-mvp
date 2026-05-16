@@ -410,19 +410,13 @@ export class SupabaseHoleRepository implements IHoleRepository {
         >
       >
     >,
-    updatedBy: string,
   ): Promise<void> {
     const payload = rows.map((row) => ({
       hole_id: row.holeId,
-      ...this.mapLoadingToDb(
-        {
-          plannedDepth: row.plannedDepth,
-          plannedEmulsion: row.plannedEmulsion,
-          plannedStemmingInitial: row.plannedStemmingInitial,
-          plannedStemmingFinal: row.plannedStemmingFinal,
-        },
-        updatedBy,
-      ),
+      planned_depth: toThreeDecimals(row.plannedDepth),
+      planned_emulsion: toThreeDecimals(row.plannedEmulsion),
+      planned_stemming_initial: toThreeDecimals(row.plannedStemmingInitial),
+      planned_stemming_final: toThreeDecimals(row.plannedStemmingFinal),
     }));
 
     if (payload.length === 0) {

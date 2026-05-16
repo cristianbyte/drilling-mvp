@@ -255,7 +255,7 @@ export default function SupervisorCargaUploadTab() {
 
       setLoadingStep(75, "Datos relacionados. Enviando plan de carga...");
 
-      await holeRepository.upsertLoadingPlan(loadingRows, "SUPERVISOR EXCEL");
+      await holeRepository.upsertLoadingPlan(loadingRows);
 
       setState((current) => ({
         ...current,
