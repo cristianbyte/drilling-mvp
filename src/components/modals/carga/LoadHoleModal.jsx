@@ -91,7 +91,7 @@ export default function LoadHoleModal({ hole, draft, onClose, onSave }) {
             </div>
 
             <div>
-              <label className="field-label">Emulsion Total</label>
+              <label className="field-label">Emulsion Total Diseño</label>
               <input
                 type="number"
                 value={toInputValue(draft?.plannedEmulsion)}

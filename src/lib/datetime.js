@@ -84,3 +84,18 @@ export function formatCompactDateTime(
     hour12: false,
   });
 }
+
+export function formatCompactDate(
+  value,
+  timeZone = getBrowserTimeZone(),
+  locale = DEFAULT_LOCALE,
+) {
+  if (!value) return "";
+
+  return new Date(value).toLocaleDateString(locale, {
+    timeZone,
+    year: "2-digit",
+    month: "2-digit",
+    day: "2-digit",
+  });
+}
