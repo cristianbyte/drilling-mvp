@@ -5,7 +5,11 @@ import CargaAccessoryUsageModal from "../components/modals/carga/CargaAccessoryU
 import DensityControlModal from "../components/modals/carga/DensityControlModal";
 import LoadHoleModal from "../components/modals/carga/LoadHoleModal";
 import Toast, { showToast, useToast } from "../components/ui/Toast";
-import { blastRepository, holeRepository } from "../di/container";
+import {
+  accessoryUsageRepository,
+  blastRepository,
+  holeRepository,
+} from "../di/container";
 import { supabaseReady } from "../infrastructure/supabase/supabaseClient";
 import { createClientId } from "../lib/ids";
 import {
@@ -16,10 +20,13 @@ import {
 import {
   clearLocalViewState,
   clearCargaSnapshot,
+  deleteRecord,
   getPendingRecordsByKinds,
+  loadCargaAccessoryHistory,
   loadCargaSnapshot,
   markRecordPending,
   markRecordSynced,
+  saveCargaAccessoryHistory,
   saveCargaSnapshot,
   saveRecord,
 } from "../lib/offlineStore";
@@ -45,6 +52,82 @@ function normalizeAccessoryNumberInput(value) {
   return String(value ?? "")
     .replace(/\D/g, "")
     .slice(0, 2);
+}
+
+function buildAccessoryPendingRecord(id, kind, data) {
+  return {
+    id,
+    kind,
+    data: { ...data, synced: false },
+    synced: 0,
+    createdAt: Date.now(),
+  };
+}
+
+function buildLocalAccessoryId() {
+  return `local-accessory:${Date.now()}`;
+}
+
+function isLocalAccessoryId(id) {
+  return String(id || "").startsWith("local-accessory:");
+}
+
+function buildAccessoryPayload(form) {
+  return {
+    usageDate: form.usageDate,
+    ikon15m: parseAccessoryQty(form.ikon15m),
+    p337: parseAccessoryQty(form.p337),
+    notes: form.notes.trim() || null,
+  };
+}
+
+function sortAccessoryUsageRecords(records) {
+  return [...records].sort(
+    (a, b) =>
+      new Date(b.updatedAt || b.createdAt || 0) -
+      new Date(a.updatedAt || a.createdAt || 0),
+  );
+}
+
+function mergeAccessoryUsageRecords(remoteRecords, pendingRecords) {
+  const merged = new Map(remoteRecords.map((record) => [record.id, record]));
+  const localCreates = [];
+
+  for (const pending of pendingRecords) {
+    if (pending.kind === "carga-accessory-create") {
+      localCreates.push({ ...pending.data, synced: false });
+      continue;
+    }
+
+    if (pending.kind === "carga-accessory-update") {
+      const current = merged.get(pending.data.id) || pending.data;
+      merged.set(pending.data.id, { ...current, ...pending.data, synced: false });
+      continue;
+    }
+
+    if (pending.kind === "carga-accessory-delete") {
+      merged.delete(pending.data.id);
+    }
+  }
+
+  return sortAccessoryUsageRecords([...localCreates, ...merged.values()]);
+}
+
+function isAccessoryPendingKind(kind) {
+  return (
+    kind === "carga-accessory-create" ||
+    kind === "carga-accessory-update" ||
+    kind === "carga-accessory-delete"
+  );
+}
+
+function filterAccessoryPendingRecordsByBlast(records, blastId) {
+  if (!blastId) return [];
+
+  return records.filter(
+    (record) =>
+      isAccessoryPendingKind(record.kind) && record.data?.blastId === blastId,
+  );
 }
 
 function buildStartedContext(leader, blast) {
@@ -148,8 +231,11 @@ export default function CargaForm() {
     buildAccessoryUsageFormState(),
   );
   const [accessoryUsageRecords, setAccessoryUsageRecords] = useState([]);
+  const [accessoryUsageSyncing, setAccessoryUsageSyncing] = useState(false);
+  const [accessoryHasPending, setAccessoryHasPending] = useState(false);
   const [densityModalOpen, setDensityModalOpen] = useState(false);
   const syncingRef = useRef(false);
+  const accessorySyncingRef = useRef(false);
   const toastState = useToast();
 
   usePageTitle("Carga");
@@ -191,36 +277,88 @@ export default function CargaForm() {
   const cargaBodyHeightClass = startedContext
     ? "lg:max-h-[calc(100vh-15rem)]"
     : "";
-  useEffect(() => {
-    setAccessoryUsageRecords([
-      {
-        id: "mock-1",
-        usageDate: "2026-05-15",
-        ikon15m: 12,
-        p337: 0,
-        notes: "Carga inicial de prueba para maqueta visual.",
-        createdBy: startedContext?.leaderName || "Lider",
-        createdAt: Date.now() - 1000 * 60 * 45,
-        updatedBy: startedContext?.leaderName || "Lider",
-        updatedAt: null,
-        synced: true,
-      },
-      {
-        id: "mock-2",
-        usageDate: "2026-05-15",
-        ikon15m: 0,
-        p337: 8,
-        notes: "Ajuste pendiente de sincronizacion.",
-        createdBy: startedContext?.leaderName || "Lider",
-        createdAt: Date.now() - 1000 * 60 * 15,
-        updatedBy: startedContext?.leaderName || "Lider",
-        updatedAt: Date.now() - 1000 * 60 * 10,
-        synced: false,
-      },
-    ]);
-  }, [startedContext?.leaderName]);
 
   const isAccessoryEditing = Boolean(accessoryUsageForm.id);
+  const accessorySyncStatus = useMemo(() => {
+    if (accessoryUsageSyncing) return "syncing";
+    return accessoryHasPending ||
+      accessoryUsageRecords.some((record) => !isSyncedValue(record.synced))
+      ? "pending"
+      : "synced";
+  }, [accessoryHasPending, accessoryUsageRecords, accessoryUsageSyncing]);
+
+  const loadAccessoryPendingRecords = useCallback(async (blastId) => {
+    const pending = await getPendingRecordsByKinds([
+      "carga-accessory-create",
+      "carga-accessory-update",
+      "carga-accessory-delete",
+    ]);
+
+    return filterAccessoryPendingRecordsByBlast(pending, blastId);
+  }, []);
+
+  const persistAccessoryUsageRecords = useCallback(async (blastId, records) => {
+    const nextRecords = sortAccessoryUsageRecords(records);
+    setAccessoryUsageRecords(nextRecords);
+
+    try {
+      await saveCargaAccessoryHistory(blastId, nextRecords);
+    } catch {
+      // Offline cache save failed
+    }
+
+    return nextRecords;
+  }, []);
+
+  const loadAccessoryUsageRecords = useCallback(async () => {
+    if (!startedContext?.blastId) {
+      setAccessoryHasPending(false);
+      setAccessoryUsageRecords([]);
+      return;
+    }
+
+    try {
+      const blastId = startedContext.blastId;
+      const [cachedRecords, pending] = await Promise.all([
+        loadCargaAccessoryHistory(blastId),
+        loadAccessoryPendingRecords(blastId),
+      ]);
+      setAccessoryHasPending(pending.length > 0);
+
+      if (!window.navigator.onLine || !supabaseReady) {
+        await persistAccessoryUsageRecords(
+          blastId,
+          mergeAccessoryUsageRecords(cachedRecords, pending),
+        );
+        return;
+      }
+
+      const remoteRecords = await accessoryUsageRepository.listByBlastId(blastId);
+      await persistAccessoryUsageRecords(
+        blastId,
+        mergeAccessoryUsageRecords(remoteRecords, pending),
+      );
+    } catch (error) {
+      console.error("Error loading accessory usage:", error);
+
+      if (startedContext?.blastId) {
+        try {
+          const [cachedRecords, pending] = await Promise.all([
+            loadCargaAccessoryHistory(startedContext.blastId),
+            loadAccessoryPendingRecords(startedContext.blastId),
+          ]);
+          setAccessoryHasPending(pending.length > 0);
+
+          await persistAccessoryUsageRecords(
+            startedContext.blastId,
+            mergeAccessoryUsageRecords(cachedRecords, pending),
+          );
+        } catch {
+          // Offline fallback restore failed
+        }
+      }
+    }
+  }, [loadAccessoryPendingRecords, persistAccessoryUsageRecords, startedContext?.blastId]);
 
   useEffect(() => {
     let mounted = true;
@@ -288,6 +426,14 @@ export default function CargaForm() {
       window.removeEventListener("offline", handleOffline);
     };
   }, []);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      loadAccessoryUsageRecords();
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [loadAccessoryUsageRecords, startedContext?.blastId]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -515,6 +661,73 @@ export default function CargaForm() {
     }
   }, [startedContext]);
 
+  const syncAccessoryPendingRecords = useCallback(async () => {
+    if (accessorySyncingRef.current) return;
+    if (!window.navigator.onLine || !supabaseReady) return;
+
+    accessorySyncingRef.current = true;
+    setAccessoryUsageSyncing(true);
+
+    try {
+      const pending = await getPendingRecordsByKinds([
+        "carga-accessory-create",
+        "carga-accessory-update",
+        "carga-accessory-delete",
+      ]);
+      if (!pending.length) return;
+
+      for (const record of pending) {
+        if (record.kind === "carga-accessory-create") {
+          const data = { ...record.data };
+          delete data.synced;
+
+          await accessoryUsageRepository.create(
+            {
+              blastId: data.blastId,
+              leaderId: data.leaderId,
+              usageDate: data.usageDate,
+              ikon15m: data.ikon15m,
+              p337: data.p337,
+              notes: data.notes,
+            },
+          );
+
+          await markRecordSynced(record.id);
+        }
+
+        if (record.kind === "carga-accessory-update") {
+          const data = { ...record.data };
+          delete data.synced;
+
+          await accessoryUsageRepository.update(
+            data.id,
+            {
+              usageDate: data.usageDate,
+              ikon15m: data.ikon15m,
+              p337: data.p337,
+              notes: data.notes,
+            },
+            data.updatedBy || startedContext?.leaderName || "Lider",
+          );
+
+          await markRecordSynced(record.id);
+        }
+
+        if (record.kind === "carga-accessory-delete") {
+          await accessoryUsageRepository.remove(record.data.id);
+          await markRecordSynced(record.id);
+        }
+      }
+
+      await loadAccessoryUsageRecords();
+    } catch (error) {
+      console.error("Error syncing accessory usage:", error);
+    } finally {
+      accessorySyncingRef.current = false;
+      setAccessoryUsageSyncing(false);
+    }
+  }, [loadAccessoryUsageRecords, startedContext?.leaderName]);
+
   useEffect(() => {
     if (!hydrated || !isOnline || pendingSyncCount === 0) return;
 
@@ -524,6 +737,16 @@ export default function CargaForm() {
 
     return () => window.clearTimeout(timeoutId);
   }, [hydrated, isOnline, pendingSyncCount, syncPendingRecords]);
+
+  useEffect(() => {
+    if (!hydrated || !isOnline) return;
+
+    const timeoutId = window.setTimeout(() => {
+      syncAccessoryPendingRecords();
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [hydrated, isOnline, syncAccessoryPendingRecords]);
 
   async function handleStart() {
     if (!selectedLeader || !selectedBlast) return;
@@ -548,6 +771,8 @@ export default function CargaForm() {
       setHoleFilter("");
       setActiveHoleId(null);
       setAccessoryUsageModalOpen(false);
+      setAccessoryHasPending(false);
+      setAccessoryUsageRecords([]);
       resetAccessoryForm();
       setDensityModalOpen(false);
 
@@ -568,6 +793,8 @@ export default function CargaForm() {
       setHoleFilter("");
       setActiveHoleId(null);
       setAccessoryUsageModalOpen(false);
+      setAccessoryHasPending(false);
+      setAccessoryUsageRecords([]);
       resetAccessoryForm();
       setDensityModalOpen(false);
       await saveRecord(
@@ -667,52 +894,135 @@ export default function CargaForm() {
     setAccessoryUsageForm(buildAccessoryUsageFormState());
   }
 
-  function handleAccessorySave() {
-    const nextData = {
-      usageDate: accessoryUsageForm.usageDate,
-      ikon15m: parseAccessoryQty(accessoryUsageForm.ikon15m),
-      p337: parseAccessoryQty(accessoryUsageForm.p337),
-      notes: accessoryUsageForm.notes.trim(),
-    };
+  async function handleAccessorySave() {
+    if (!startedContext) return;
+
+    const payload = buildAccessoryPayload(accessoryUsageForm);
+
+    if (window.navigator.onLine && supabaseReady && !isLocalAccessoryId(accessoryUsageForm.id)) {
+      try {
+        if (accessoryUsageForm.id) {
+          await accessoryUsageRepository.update(
+            accessoryUsageForm.id,
+            payload,
+            startedContext.leaderName,
+          );
+        } else {
+          await accessoryUsageRepository.create(
+            {
+              blastId: startedContext.blastId,
+              leaderId: startedContext.leaderId,
+              ...payload,
+            },
+          );
+        }
+
+        resetAccessoryForm();
+        await loadAccessoryUsageRecords();
+        return;
+      } catch (error) {
+        console.error("Error saving accessory usage:", error);
+      }
+    }
 
     if (accessoryUsageForm.id) {
-      setAccessoryUsageRecords((current) =>
-        current.map((record) =>
-          record.id === accessoryUsageForm.id
-            ? {
-                ...record,
-                ...nextData,
-                updatedBy: record.updatedBy || record.createdBy,
-                updatedAt: Date.now(),
-                synced: false,
-              }
-            : record,
+      const nextRecord = {
+        ...accessoryUsageRecords.find((record) => record.id === accessoryUsageForm.id),
+        ...payload,
+        updatedBy: startedContext.leaderName,
+        updatedAt: new Date().toISOString(),
+        synced: false,
+      };
+
+      await persistAccessoryUsageRecords(
+        startedContext.blastId,
+        accessoryUsageRecords.map((record) =>
+          record.id === accessoryUsageForm.id ? nextRecord : record,
         ),
       );
+
+      await saveRecord(
+        buildAccessoryPendingRecord(
+          isLocalAccessoryId(accessoryUsageForm.id)
+            ? accessoryUsageForm.id
+            : `carga-accessory-update:${accessoryUsageForm.id}`,
+          isLocalAccessoryId(accessoryUsageForm.id)
+            ? "carga-accessory-create"
+            : "carga-accessory-update",
+          nextRecord,
+        ),
+      );
+      setAccessoryHasPending(true);
       resetAccessoryForm();
       return;
     }
 
-    setAccessoryUsageRecords((current) => [
-      {
-        id: `mock-${Date.now()}`,
-        ...nextData,
-        createdBy: startedContext?.leaderName || "Lider",
-        createdAt: Date.now(),
-        updatedBy: null,
-        updatedAt: null,
-        synced: false,
-      },
-      ...current,
+    const localId = buildLocalAccessoryId();
+    const nextRecord = {
+      id: localId,
+      blastId: startedContext.blastId,
+      leaderId: startedContext.leaderId,
+      ...payload,
+      createdBy: startedContext.leaderName,
+      createdAt: new Date().toISOString(),
+      updatedBy: null,
+      updatedAt: null,
+      synced: false,
+    };
+
+    await persistAccessoryUsageRecords(startedContext.blastId, [
+      nextRecord,
+      ...accessoryUsageRecords,
     ]);
+    await saveRecord(
+      buildAccessoryPendingRecord(
+        localId,
+        "carga-accessory-create",
+        nextRecord,
+      ),
+    );
+    setAccessoryHasPending(true);
     resetAccessoryForm();
   }
 
-  function handleAccessoryDelete() {
+  async function handleAccessoryDelete() {
     if (!accessoryUsageForm.id) return;
-    setAccessoryUsageRecords((current) =>
-      current.filter((record) => record.id !== accessoryUsageForm.id),
+    if (!startedContext?.blastId) return;
+
+    const targetId = accessoryUsageForm.id;
+    await persistAccessoryUsageRecords(
+      startedContext.blastId,
+      accessoryUsageRecords.filter((record) => record.id !== targetId),
     );
+
+    if (isLocalAccessoryId(targetId)) {
+      await deleteRecord(targetId);
+      resetAccessoryForm();
+      return;
+    }
+
+    if (window.navigator.onLine && supabaseReady) {
+      try {
+        await accessoryUsageRepository.remove(targetId);
+        resetAccessoryForm();
+        return;
+      } catch (error) {
+        console.error("Error deleting accessory usage:", error);
+      }
+    }
+
+    await saveRecord(
+      buildAccessoryPendingRecord(
+        `carga-accessory-delete:${targetId}`,
+        "carga-accessory-delete",
+        {
+          id: targetId,
+          blastId: startedContext.blastId,
+          updatedBy: startedContext?.leaderName || "Lider",
+        },
+      ),
+    );
+    setAccessoryHasPending(true);
     resetAccessoryForm();
   }
 
@@ -742,6 +1052,8 @@ export default function CargaForm() {
     setHoleDrafts({});
     setActiveHoleId(null);
     setAccessoryUsageModalOpen(false);
+    setAccessoryHasPending(false);
+    setAccessoryUsageRecords([]);
     resetAccessoryForm();
     setDensityModalOpen(false);
     setHoleFilter("");
@@ -817,7 +1129,7 @@ export default function CargaForm() {
 
         {startedContext && (
           <CargaHolesSection
-            accessorySyncStatus="synced"
+            accessorySyncStatus={accessorySyncStatus}
             blastHoles={filteredBlastHoles}
             buildLoadingDraft={buildLoadingDraft}
             cargaBodyHeightClass={cargaBodyHeightClass}

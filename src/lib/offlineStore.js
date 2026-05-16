@@ -6,16 +6,19 @@ const APP_STATE_STORE = 'appState'
 const RECORDS_STORE = 'records'
 const OPERATOR_KEY = 'operator-form'
 const CARGA_KEY = 'carga-form'
+const CARGA_ACCESSORY_HISTORY_PREFIX = 'carga-accessory-history:'
 const SYNC_PENDING = 0
 const SYNC_DONE = 1
 const VIEW_RESET_CONFIG = {
   perforacion: {
     snapshotKey: OPERATOR_KEY,
     kinds: ['shift', 'hole'],
+    appStatePrefixes: [],
   },
   carga: {
     snapshotKey: CARGA_KEY,
-    kinds: ['carga-context', 'carga-density', 'carga-hole'],
+    kinds: ['carga-context', 'carga-density', 'carga-hole', 'carga-accessory-create', 'carga-accessory-update', 'carga-accessory-delete'],
+    appStatePrefixes: [CARGA_ACCESSORY_HISTORY_PREFIX],
   },
 }
 const KIND_ORDER = {
@@ -24,6 +27,9 @@ const KIND_ORDER = {
   'carga-density': 1,
   hole: 1,
   'carga-hole': 2,
+  'carga-accessory-create': 3,
+  'carga-accessory-update': 4,
+  'carga-accessory-delete': 5,
 }
 
 function isSyncedValue(value) {
@@ -114,7 +120,21 @@ export async function clearLocalViewState(view) {
   const db = await dbPromise
   const tx = db.transaction([APP_STATE_STORE, RECORDS_STORE], 'readwrite')
 
-  await tx.objectStore(APP_STATE_STORE).delete(config.snapshotKey)
+  const appStateStore = tx.objectStore(APP_STATE_STORE)
+
+  await appStateStore.delete(config.snapshotKey)
+
+  if (config.appStatePrefixes?.length) {
+    const appStateKeys = await appStateStore.getAllKeys()
+
+    await Promise.all(
+      appStateKeys
+        .filter(key =>
+          config.appStatePrefixes.some(prefix => String(key).startsWith(prefix)),
+        )
+        .map(key => appStateStore.delete(key)),
+    )
+  }
 
   const recordsStore = tx.objectStore(RECORDS_STORE)
   const records = await recordsStore.getAll()
@@ -127,6 +147,38 @@ export async function clearLocalViewState(view) {
   )
 
   await tx.done
+}
+
+export async function loadCargaAccessoryHistory(blastId) {
+  if (!blastId) return []
+
+  const db = await dbPromise
+  const stored = await db.get(APP_STATE_STORE, `${CARGA_ACCESSORY_HISTORY_PREFIX}${blastId}`)
+  return Array.isArray(stored?.records) ? stored.records : []
+}
+
+export async function saveCargaAccessoryHistory(blastId, records) {
+  if (!blastId) return []
+
+  const db = await dbPromise
+  const nextRecords = Array.isArray(records) ? records : []
+  await db.put(
+    APP_STATE_STORE,
+    {
+      blastId,
+      records: nextRecords,
+      savedAt: Date.now(),
+    },
+    `${CARGA_ACCESSORY_HISTORY_PREFIX}${blastId}`,
+  )
+  return nextRecords
+}
+
+export async function clearCargaAccessoryHistory(blastId) {
+  if (!blastId) return
+
+  const db = await dbPromise
+  await db.delete(APP_STATE_STORE, `${CARGA_ACCESSORY_HISTORY_PREFIX}${blastId}`)
 }
 
 export async function getPendingRecords() {

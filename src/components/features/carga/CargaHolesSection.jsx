@@ -79,7 +79,7 @@ export default function CargaHolesSection({
             onOpen={onOpenAccessoryUsage}
             status={accessorySyncStatus}
           />
-          <span className="text-sm rounded-full border border-(--color-border-subtle) bg-(--color-surface-1) px-3 py-1 font-(--font-mono) uppercase tracking-[0.12em] text-(--color-text-muted)">
+          <span className="text-[0.625rem] rounded-full border border-(--color-border-subtle) bg-(--color-surface-1) px-3 py-1 font-(--font-mono) uppercase tracking-[0.12em] text-(--color-text-muted)">
             Emulsion Total:{" "}
             <strong className="text-(--color-brand-amber)">
               {formatEmulsionTotal(totalEmulsion)}
